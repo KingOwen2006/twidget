@@ -23,7 +23,7 @@ class MetricChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_secondary)
         textSize = 10f * resources.displayMetrics.scaledDensity
-        typeface = Typeface.create("sec", Typeface.BOLD)
+        typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_divider)
@@ -33,7 +33,7 @@ class MetricChartView @JvmOverloads constructor(
     private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = 12f * resources.displayMetrics.scaledDensity
-        typeface = Typeface.create("sec", Typeface.BOLD)
+        typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val tooltipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_accent)

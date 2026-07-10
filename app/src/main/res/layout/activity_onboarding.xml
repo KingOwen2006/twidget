@@ -5,9 +5,10 @@
     gradient (below the content) to drain the blue on the final step. Scroll
     fills the middle, footer pins to the bottom.
 -->
-<FrameLayout
+<dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/onboarding_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/onboarding_gradient_bg">
@@ -24,6 +25,7 @@
         android:visibility="gone" />
 
     <LinearLayout
+        android:id="@+id/onboarding_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true"
@@ -282,4 +284,4 @@
                 android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
-</FrameLayout>
+</dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout>

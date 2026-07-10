@@ -172,14 +172,21 @@ object WidgetArtworkRenderer {
                 typeface = if (settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX) {
                     gsfTypeface(context, weight)
                 } else {
-                    Typeface.create("sec", if (weight >= 700) Typeface.BOLD else Typeface.NORMAL)
+                    TwidgetFonts.oneUiSans(context, weight)
                 }
             }
 
         if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1) {
-            val valuePaint = paintFor(700, primary, 24f)
-            val labelPaint = paintFor(700, primary, 16f)
-            val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta)
+            val widthDp = width / density
+            val heightDp = height / density
+            val isAospTwoByTwo = !TwidgetFonts.hasSystemOneUiSans && widthDp <= 230f && heightDp > 70f
+            val valuePaint = paintFor(700, primary, if (isAospTwoByTwo) 40f else 24f)
+            val labelPaint = paintFor(700, primary, if (isAospTwoByTwo) 22f else 16f)
+            val deltaText = if (isAospTwoByTwo || !settings.showDelta || delta == 0L) {
+                ""
+            } else {
+                TwidgetStore.signedNumber(delta)
+            }
             val deltaPaint = paintFor(700, if (delta < 0) Color.rgb(229, 57, 53) else Color.rgb(46, 125, 50), 13f)
             val lineGap = 7f * density
             var valueLineWidth = valuePaint.measureText(value) +
@@ -269,7 +276,9 @@ object WidgetArtworkRenderer {
         "Seventeen", "Eighteen", "Nineteen",
     )
     private val TENS_WORDS = setOf("Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
-    private val SCALE_WORDS = setOf("Thousand", "Million", "Billion")
+    private val SCALE_WORDS = setOf(
+        "Thousand", "Million", "Billion", "Trillion", "Quadrillion", "Quintillion",
+    )
     private val CONNECTOR_WORDS = setOf("Hundred", "and")
 
     // Typographic role per word. TENS carries the loudest emphasis, ONES next,
@@ -358,12 +367,7 @@ object WidgetArtworkRenderer {
     // regular, which is why the label also leans on opacity for hierarchy.
     private fun oneUiTypeface(context: Context, weight: Int): Typeface =
         oneUiWeightCache.getOrPut(weight) {
-            val base = Typeface.create("sec", Typeface.NORMAL)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                Typeface.create(base, weight.coerceIn(1, 1000), false)
-            } else {
-                Typeface.create("sec", if (weight >= 700) Typeface.BOLD else Typeface.NORMAL)
-            }
+            TwidgetFonts.oneUiSans(context, weight)
         }
 
     private fun textPaint(context: Context, settings: TwidgetWidgetSettings, color: Int, bold: Boolean): Paint =
@@ -375,7 +379,7 @@ object WidgetArtworkRenderer {
                     if (bold) R.font.google_sans_flex_bold else R.font.google_sans_flex_regular,
                 )
             } else {
-                Typeface.create("sec", if (bold) Typeface.BOLD else Typeface.NORMAL)
+                TwidgetFonts.oneUiSans(context, if (bold) 700 else 400)
             }
         }
 

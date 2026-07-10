@@ -28,6 +28,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import dev.oneuiproject.oneui.widget.CardItemView
+import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 import java.io.File
 import kotlin.math.abs
 
@@ -54,6 +55,7 @@ class AboutActivity : FoldablePopOverActivity() {
         setupTransparentAppBar()
         setupVersion()
         setupHeaderIconBounce()
+        setupAdaptiveLayout()
         setupCollapsingContent()
         setupCreditAvatars()
         setupUpdates()
@@ -209,6 +211,16 @@ class AboutActivity : FoldablePopOverActivity() {
                 }
                 .start()
         }
+    }
+
+    private fun setupAdaptiveLayout() {
+        findViewById<AdaptiveCoordinatorLayout>(R.id.about_root).configureAdaptiveMargin(
+            AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
+            setOf(
+                findViewById(R.id.about_app_bar),
+                findViewById(R.id.about_scroll),
+            ),
+        )
     }
 
     // Seven taps on the version number unlock the hidden debug menu in

@@ -48,13 +48,28 @@ class TwidgetWidget : AppWidgetProvider() {
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 360)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 260)
-            val mode = layoutMode(options)
+            // AOSP launchers use minWidth/maxHeight for the portrait allocation
+            // and maxWidth/minHeight for landscape. Rendering minWidth/minHeight
+            // unconditionally creates a landscape-shaped bitmap that Pixel
+            // Launcher stretches vertically. Keep Samsung's established sizing
+            // path unchanged because One UI supplies its own span metadata and
+            // hosts the RemoteViews blur implementation.
+            val artworkWidth = if (!TwidgetFonts.hasSystemOneUiSans &&
+                context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            ) options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth) else minWidth
+            val artworkHeight = if (!TwidgetFonts.hasSystemOneUiSans &&
+                context.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+            ) options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight) else minHeight
+            val mode = if (TwidgetFonts.hasSystemOneUiSans) {
+                layoutMode(options)
+            } else {
+                layoutModeForAosp(artworkWidth, artworkHeight)
+            }
             val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
-            // Launchers ignore @font references when inflating RemoteViews, so
-            // Google Sans Flex widgets are rendered as artwork bitmaps instead.
-            val useGsf = widgetSettings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX
-            val renderAsArtwork = useGsf || mode == LAYOUT_MODE_LARGE || mode == LAYOUT_MODE_COMPACT_SQUARE
-            val layoutResource = layoutResource(mode, useGsf)
+            // Launchers can replace RemoteViews font families—even Samsung's
+            // own `sec` family—so every size renders its text as artwork.
+            val renderAsArtwork = true
+            val layoutResource = layoutResource(mode, renderAsArtwork)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
@@ -74,8 +89,8 @@ class TwidgetWidget : AppWidgetProvider() {
                 if (renderAsArtwork) {
                     val artwork = WidgetArtworkRenderer.render(
                         context = context,
-                        widthPx = dp(context, minWidth),
-                        heightPx = dp(context, minHeight),
+                        widthPx = dp(context, artworkWidth),
+                        heightPx = dp(context, artworkHeight),
                         stats = stats,
                         settings = widgetSettings,
                         mode = mode,
@@ -118,24 +133,43 @@ class TwidgetWidget : AppWidgetProvider() {
         // Whichever layout a widget is currently showing — used for both the
         // full render and the tap-refresh spinner so the partial update targets
         // the right view hierarchy.
-        private fun layoutResource(mode: Int, useGsf: Boolean): Int = when {
+        private fun layoutResource(mode: Int, renderAsArtwork: Boolean): Int = when {
             mode == LAYOUT_MODE_LARGE -> R.layout.widget_blur
-            mode == LAYOUT_MODE_COMPACT_SQUARE || useGsf -> R.layout.widget_compact_square
+            mode == LAYOUT_MODE_COMPACT_SQUARE || renderAsArtwork -> R.layout.widget_compact_square
             mode == LAYOUT_MODE_COMPACT_2X1 -> R.layout.widget_compact_2x1
             else -> R.layout.widget_compact_strip
         }
 
         fun spinnerLayout(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int): Int {
-            val mode = layoutMode(appWidgetManager.getAppWidgetOptions(appWidgetId))
-            val useGsf = TwidgetStore.widgetSettings(context, appWidgetId).fontFamily ==
-                TwidgetStore.FONT_GOOGLE_SANS_FLEX
-            return layoutResource(mode, useGsf)
+            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+            val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 360)
+            val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 260)
+            val landscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val mode = if (TwidgetFonts.hasSystemOneUiSans) {
+                layoutMode(options)
+            } else {
+                layoutModeForAosp(
+                    if (landscape) options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth) else minWidth,
+                    if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
+                )
+            }
+            return layoutResource(mode, renderAsArtwork = true)
         }
 
         fun layoutMode(minWidth: Int, minHeight: Int): Int = when {
             minHeight <= 100 && minWidth <= 170 -> LAYOUT_MODE_COMPACT_2X1
             minHeight <= 100 -> LAYOUT_MODE_COMPACT_STRIP
             minWidth <= 230 && minHeight <= 230 -> LAYOUT_MODE_COMPACT_SQUARE
+            else -> LAYOUT_MODE_LARGE
+        }
+
+        // Pixel Launcher cells are much wider than they are tall: its 2x2 is
+        // about 179x99dp while a wide one-row widget is about 360x48dp. Both
+        // 2x1 and 2x2 use Twidget's centered count artwork; only wider one-row
+        // allocations use the handle-bearing strip.
+        fun layoutModeForAosp(width: Int, height: Int): Int = when {
+            width <= 230 && height <= 110 -> LAYOUT_MODE_COMPACT_2X1
+            height <= 110 -> LAYOUT_MODE_COMPACT_STRIP
             else -> LAYOUT_MODE_LARGE
         }
 
@@ -246,23 +280,32 @@ class TwidgetWidget : AppWidgetProvider() {
         }
 
         fun followersInWords(value: Long): String {
-            if (value in 0L..999_999L) return numberWords(value)
-            return fullNumber(value)
+            if (value < 0L) return fullNumber(value)
+            return numberWords(value)
         }
 
         private fun numberWords(value: Long): String {
-            val thousands = value / 1_000
-            val remainder = value % 1_000
+            if (value == 0L) return "Zero"
+            if (value < 1_000L) return hundreds(value)
+            val scales = listOf(
+                1_000_000_000_000_000_000L to "Quintillion",
+                1_000_000_000_000_000L to "Quadrillion",
+                1_000_000_000_000L to "Trillion",
+                1_000_000_000L to "Billion",
+                1_000_000L to "Million",
+                1_000L to "Thousand",
+            )
+            val (scale, name) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
             return buildString {
-                if (thousands > 0) {
-                    append(hundreds(thousands))
-                    append(" Thousand")
-                }
+                append(numberWords(leading))
+                append(' ')
+                append(name)
                 if (remainder > 0) {
-                    if (isNotEmpty()) append(", ")
-                    append(hundreds(remainder))
+                    append(", ")
+                    append(numberWords(remainder))
                 }
-                if (isEmpty()) append("Zero")
             }
         }
 

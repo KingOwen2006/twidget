@@ -2,6 +2,8 @@ package com.tjg.twidget
 
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -13,11 +15,31 @@ import dev.oneuiproject.oneui.utils.applyEdgeToEdge
  * their own padding while their backgrounds continue beneath both system bars.
  */
 abstract class EdgeToEdgeActivity : AppCompatActivity() {
+    private var fontRoot: ViewGroup? = null
+    private val fontLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+        fontRoot?.let(TwidgetFonts::applyTo)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Apply after AppCompat installs the themed decor so the parent One UI
         // theme cannot restore an opaque navigation-bar colour afterwards.
         applyEdgeToEdge()
+    }
+
+    override fun onContentChanged() {
+        fontRoot?.viewTreeObserver?.removeOnGlobalLayoutListener(fontLayoutListener)
+        super.onContentChanged()
+        fontRoot = findViewById<ViewGroup>(android.R.id.content)?.also { root ->
+            TwidgetFonts.applyTo(root)
+            root.viewTreeObserver.addOnGlobalLayoutListener(fontLayoutListener)
+        }
+    }
+
+    override fun onDestroy() {
+        fontRoot?.viewTreeObserver?.removeOnGlobalLayoutListener(fontLayoutListener)
+        fontRoot = null
+        super.onDestroy()
     }
 
     /**

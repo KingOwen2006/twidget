@@ -24,6 +24,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.AppCompatButton
+import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 
 class OnboardingActivity : EdgeToEdgeActivity() {
     private var step = STEP_OVERVIEW
@@ -50,6 +51,10 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         if (addAccountMode) step = STEP_PROFILE
         if (startedOnWidgetStep) step = STEP_WIDGETS
         setContentView(R.layout.activity_onboarding)
+        findViewById<AdaptiveCoordinatorLayout>(R.id.onboarding_root).configureAdaptiveMargin(
+            AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
+            setOf(findViewById<View>(R.id.onboarding_content)),
+        )
         onBackPressedDispatcher.addCallback(this, stepBackCallback)
         setupInput()
         setupButtons()

@@ -180,7 +180,7 @@ object LockScreenFollowerViews {
 
         val countPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             color = primary
-            typeface = Typeface.create("sec", Typeface.BOLD)
+            typeface = TwidgetFonts.oneUiSans(context, 700)
         }
         val deltaPaint = Paint(countPaint).apply { color = deltaColor }
 

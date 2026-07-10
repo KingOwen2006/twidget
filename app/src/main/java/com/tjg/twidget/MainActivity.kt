@@ -45,6 +45,7 @@ import dev.oneuiproject.oneui.layout.Badge
 import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -544,7 +545,7 @@ class MainActivity : EdgeToEdgeActivity() {
                 R.id.followers_value,
                 R.id.followers_delta,
                 R.id.followers_chart,
-                if (stats.followersKnown) TwidgetStore.compactNumber(stats.followersCount) else "--",
+                if (stats.followersKnown) fullCount(stats.followersCount) else "--",
                 { it.followersKnown },
             ) { it.followers }
             DashboardCardType.FOLLOWING -> ChartBinding(
@@ -552,7 +553,7 @@ class MainActivity : EdgeToEdgeActivity() {
                 R.id.following_value,
                 R.id.following_delta,
                 R.id.following_chart,
-                if (stats.followingKnown) TwidgetStore.compactNumber(stats.followingsCount) else "--",
+                if (stats.followingKnown) fullCount(stats.followingsCount) else "--",
                 { it.followingKnown },
             ) { it.following }
             DashboardCardType.POSTS -> ChartBinding(
@@ -560,7 +561,7 @@ class MainActivity : EdgeToEdgeActivity() {
                 R.id.posts_value,
                 R.id.posts_delta,
                 R.id.posts_chart,
-                if (stats.postsKnown) TwidgetStore.compactNumber(stats.statusesCount) else "--",
+                if (stats.postsKnown) fullCount(stats.statusesCount) else "--",
                 { it.postsKnown },
             ) { it.posts }
             DashboardCardType.LIKES -> ChartBinding(
@@ -568,7 +569,7 @@ class MainActivity : EdgeToEdgeActivity() {
                 R.id.likes_value,
                 R.id.likes_delta,
                 R.id.likes_chart,
-                if (stats.likesKnown) TwidgetStore.compactNumber(stats.likeCount) else "--",
+                if (stats.likesKnown) fullCount(stats.likeCount) else "--",
                 { it.likesKnown },
             ) { it.likes }
             else -> error("Compact cards do not have chart layouts.")
@@ -691,7 +692,10 @@ class MainActivity : EdgeToEdgeActivity() {
             setPadding(dp(8), dp(8), dp(8), dp(8))
             contentDescription = getString(R.string.delete)
             setOnClickListener { removeDashboardCard(card.id) }
-        }
+    }
+
+    private fun fullCount(value: Long): String =
+        NumberFormat.getIntegerInstance(Locale.US).format(value)
 
     private fun bindMetric(
         root: View,

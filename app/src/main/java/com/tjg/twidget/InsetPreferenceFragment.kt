@@ -3,10 +3,9 @@ package com.tjg.twidget
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.util.SeslRoundedCorner
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
+import androidx.recyclerview.widget.RecyclerView
 import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
 
 /**
@@ -20,29 +19,17 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         super.onViewCreated(view, savedInstanceState)
         // The trailing inset draws the bottom rounding instead.
         listView.seslSetLastRoundedCorner(false)
-        // SESL gives the RecyclerView colorBackground (the white card colour),
-        // which becomes visible inside its edge-to-edge navigation-bar padding.
-        // Match the surrounding preference surface so that inset is seamless.
-        val surfaceAttributes = requireContext().obtainStyledAttributes(
-            intArrayOf(dev.oneuiproject.oneui.design.R.attr.roundedCornerColor)
+        listView.addOnChildAttachStateChangeListener(
+            object : RecyclerView.OnChildAttachStateChangeListener {
+                override fun onChildViewAttachedToWindow(view: View) {
+                    TwidgetFonts.applyTo(view)
+                }
+
+                override fun onChildViewDetachedFromWindow(view: View) = Unit
+            }
         )
-        val surfaceColor = try {
-            surfaceAttributes.getColor(0, 0)
-        } finally {
-            surfaceAttributes.recycle()
-        }
-        listView.setBackgroundColor(surfaceColor)
-        val baseBottomPadding = listView.paddingBottom
-        listView.clipToPadding = false
-        ViewCompat.setOnApplyWindowInsetsListener(listView) { list, insets ->
-            val navigationBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            list.setPadding(
-                list.paddingLeft,
-                list.paddingTop,
-                list.paddingRight,
-                baseBottomPadding + navigationBar,
-            )
-            insets
+        for (index in 0 until listView.childCount) {
+            TwidgetFonts.applyTo(listView.getChildAt(index))
         }
     }
 
