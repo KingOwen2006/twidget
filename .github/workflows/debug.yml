@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # prerelease number is the distance from the base-version commit
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -41,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # prerelease number is the distance from the base-version commit
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -64,8 +64,16 @@ jobs:
         id: version
         run: |
           VERSION=$(jq -r '.elements[0].versionName' app/build/outputs/apk/debug/output-metadata.json)
-          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-debug\.[1-9][0-9]*$'; then
-            echo "::error::Built APK has invalid debug version $VERSION"
+          BASE=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
+          VERSION_COMMIT=$(git log -1 --format=%H -- version.properties)
+          if [ -z "$VERSION_COMMIT" ]; then
+            echo "::error::Unable to locate the base-version commit; checkout history is incomplete"
+            exit 1
+          fi
+          NUMBER=$(($(git rev-list --count "$VERSION_COMMIT..HEAD") + 1))
+          EXPECTED="$BASE-debug.$NUMBER"
+          if [ "$VERSION" != "$EXPECTED" ]; then
+            echo "::error::Built APK version $VERSION does not match expected version $EXPECTED"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
