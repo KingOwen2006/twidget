@@ -21,12 +21,11 @@ import android.widget.RadioButton
 import android.widget.TextView
 import androidx.appcompat.widget.SeslSeekBar
 import androidx.appcompat.widget.SwitchCompat
-import androidx.appcompat.app.AppCompatActivity
 import dev.oneuiproject.oneui.design.R as OneUiR
 import dev.oneuiproject.oneui.widget.CardItemView
 import dev.oneuiproject.oneui.widget.RadioItemViewGroup
 
-class WidgetConfigActivity : AppCompatActivity() {
+class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private var tintAlpha = 205
     private var tintColor = 0x00FFFFFF

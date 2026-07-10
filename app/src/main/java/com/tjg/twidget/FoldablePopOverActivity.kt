@@ -2,13 +2,12 @@ package com.tjg.twidget
 
 import android.content.Intent
 import android.content.res.Configuration
-import androidx.appcompat.app.AppCompatActivity
 
 /**
  * Keeps secondary screens in the same presentation as the display changes:
  * full-screen on the folded display and a One UI pop-over on the inner display.
  */
-abstract class FoldablePopOverActivity : AppCompatActivity() {
+abstract class FoldablePopOverActivity : EdgeToEdgeActivity() {
     private var isChangingPresentation = false
 
     override fun onConfigurationChanged(newConfig: Configuration) {

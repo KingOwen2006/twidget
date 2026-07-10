@@ -5,6 +5,7 @@
     android:id="@+id/main_toolbar_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    app:drawerBackAnimation="true"
     app:expanded="true"
     app:mainRoundedCorners="top"
     app:title="@string/app_name">

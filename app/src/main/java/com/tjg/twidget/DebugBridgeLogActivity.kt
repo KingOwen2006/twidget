@@ -24,7 +24,7 @@ class DebugBridgeLogActivity : FoldablePopOverActivity() {
         setContentView(R.layout.activity_preference_screen)
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
             setTitle(getString(R.string.bridge_log))
-            setNavigationButtonOnClickListener { finish() }
+            setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()

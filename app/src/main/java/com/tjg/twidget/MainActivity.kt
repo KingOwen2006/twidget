@@ -37,7 +37,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -52,7 +52,7 @@ import kotlin.math.roundToLong
 import dev.oneuiproject.oneui.design.R as OneUiDesignR
 import dev.oneuiproject.oneui.R as OneUiIconR
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : EdgeToEdgeActivity() {
     private val heavyTypeface: Typeface by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
@@ -75,6 +75,11 @@ class MainActivity : AppCompatActivity() {
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
     private var lifecycleGeneration = 0L
     private var syncGeneration = 0L
+    private val exitEditModeOnBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            setEditMode(false)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +89,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_main)
+        onBackPressedDispatcher.addCallback(this, exitEditModeOnBack)
         RefreshWorker.schedule(this)
         TwidgetStore.migrateStoredHistories(this)
         setupRefresh()
@@ -144,14 +150,6 @@ class MainActivity : AppCompatActivity() {
                 render()
             }
             .show()
-    }
-
-    override fun onBackPressed() {
-        if (editMode) {
-            setEditMode(false)
-        } else {
-            super.onBackPressed()
-        }
     }
 
     private fun render() {
@@ -939,6 +937,7 @@ class MainActivity : AppCompatActivity() {
     private fun setEditMode(enabled: Boolean) {
         if (editMode == enabled) return
         editMode = enabled
+        exitEditModeOnBack.isEnabled = enabled
         if (!enabled) clearDragPreview()
         invalidateOptionsMenu()
         render()

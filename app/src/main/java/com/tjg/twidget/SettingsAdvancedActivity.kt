@@ -9,7 +9,7 @@ class SettingsAdvancedActivity : FoldablePopOverActivity() {
         setContentView(R.layout.activity_preference_screen)
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
             setTitle(getString(R.string.advanced_options))
-            setNavigationButtonOnClickListener { finish() }
+            setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()

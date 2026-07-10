@@ -2,7 +2,6 @@ package com.tjg.twidget
 
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
@@ -18,9 +17,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import dev.oneuiproject.oneui.widget.CardItemView
@@ -32,7 +29,6 @@ class AboutActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        makeSystemBarsTransparent()
         setContentView(R.layout.activity_about)
         applySystemBarInsets()
         setupToolbar()
@@ -113,18 +109,6 @@ class AboutActivity : FoldablePopOverActivity() {
             setBackgroundColor(Color.TRANSPARENT)
             backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
             elevation = 0f
-        }
-    }
-
-    private fun makeSystemBarsTransparent() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !dark
-            isAppearanceLightNavigationBars = !dark
         }
     }
 

@@ -22,10 +22,10 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.AppCompatButton
 
-class OnboardingActivity : AppCompatActivity() {
+class OnboardingActivity : EdgeToEdgeActivity() {
     private var step = STEP_OVERVIEW
     private var isStarting = false
     private var addAccountMode = false
@@ -33,6 +33,15 @@ class OnboardingActivity : AppCompatActivity() {
     private var previewFloatAnimator: ObjectAnimator? = null
     private val previewHandler = Handler(Looper.getMainLooper())
     private var asyncGeneration = 0L
+    private val stepBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            when (step) {
+                STEP_PROFILE -> goToStep(STEP_OVERVIEW)
+                STEP_WIDGETS -> goToStep(STEP_PROFILE)
+                STEP_DONE -> goToStep(STEP_WIDGETS)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +50,7 @@ class OnboardingActivity : AppCompatActivity() {
         if (addAccountMode) step = STEP_PROFILE
         if (startedOnWidgetStep) step = STEP_WIDGETS
         setContentView(R.layout.activity_onboarding)
-        makeStatusBarTransparent()
+        onBackPressedDispatcher.addCallback(this, stepBackCallback)
         setupInput()
         setupButtons()
         setupShareHistoryCheckbox()
@@ -56,34 +65,9 @@ class OnboardingActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    override fun onBackPressed() {
-        if (isStarting || addAccountMode) {
-            super.onBackPressed()
-            return
-        }
-        when (step) {
-            STEP_PROFILE -> goToStep(STEP_OVERVIEW)
-            STEP_WIDGETS -> if (startedOnWidgetStep) super.onBackPressed() else goToStep(STEP_PROFILE)
-            STEP_DONE -> goToStep(STEP_WIDGETS)
-            else -> super.onBackPressed()
-        }
-    }
-
     private fun goToStep(next: Int) {
         step = next
         renderStep(animate = true)
-    }
-
-    // Let the gradient run under the status bar. Edge-to-edge draws the root
-    // full-window; its fitsSystemWindows keeps content padded clear of the bars,
-    // while the transparent bar reveals the gradient behind it.
-    private fun makeStatusBarTransparent() {
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
-        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
-            .isAppearanceLightStatusBars = !dark
     }
 
     private fun setupInput() {
@@ -219,6 +203,11 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun updateButtons() {
+        stepBackCallback.isEnabled = !isStarting && !addAccountMode && when (step) {
+            STEP_PROFILE, STEP_DONE -> true
+            STEP_WIDGETS -> !startedOnWidgetStep
+            else -> false
+        }
         val showSecondary = step == STEP_WIDGETS
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
