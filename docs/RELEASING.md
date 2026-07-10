@@ -1,0 +1,73 @@
+# Maintainer Release Process
+
+This process keeps production signing and hosted-service credentials outside
+the Git repository.
+
+## Credential boundaries
+
+- The release keystore and `keystore.properties` live in
+  `~/.config/twidget/` with owner-only permissions.
+- GitHub Package credentials live in
+  `~/.config/twidget/github.properties` with owner-only permissions.
+- GitHub Actions stores the base64-encoded release keystore, signing passwords,
+  and package-registry credentials as encrypted repository secrets.
+- Railway stores its database, Redis, X API, administration, and service tokens
+  in Railway variables. Never copy their values into a repository file,
+  workflow, issue, log, or release note.
+
+`keystore.properties` uses the standard Android signing keys:
+
+```properties
+storeFile=/absolute/path/to/twidget-release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+For a one-off alternative location, pass
+`-PtwidgetSigningProperties=/absolute/path/to/keystore.properties`.
+
+## Stable release checklist
+
+1. Ensure `main` is clean, current with `origin/main`, and green in GitHub
+   Actions.
+2. Set the intended stable semantic version in `version.properties`.
+3. Add the matching dated section and comparison link to `CHANGELOG.md`.
+4. Run the Android, bridge, and secret-boundary checks documented below.
+5. Confirm the shared bridge health endpoint and one representative public
+   profile lookup succeed without exposing operator credentials.
+6. Dispatch the **Release** workflow with the plain version, for example
+   `1.0.0`. The workflow verifies the version, builds and signs the APK, creates
+   `twidget-v<version>`, and publishes the GitHub release.
+7. Verify the workflow conclusion, release notes, APK filename, APK version,
+   signing certificate, and updater visibility from a logged-out client.
+
+For a public release, the release repository itself must be public. GitHub
+release assets in a private repository are not anonymously downloadable, and
+the app updater deliberately does not embed a GitHub credential.
+
+Do not create the stable tag manually unless recovering a failed workflow; the
+workflow owns the tag and published asset.
+
+## Local verification
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./gradlew testDebugUnitTest assembleDebug lintDebug \
+  testReleaseUnitTest assembleRelease lintVitalRelease
+
+cd bridge
+npm ci
+npm run check
+npm test
+npm audit --omit=dev
+```
+
+Before making the repository public, scan the complete Git history—not merely
+the working tree—for credentials and sensitive signing files. If a real secret
+ever entered Git, remove it from history and rotate it before changing
+visibility; history rewriting alone does not make a credential safe again.
+
+Also review author email addresses, commit messages, screenshots, and asset
+provenance because all of those become public with the Git history. Enable
+GitHub private vulnerability reporting before announcing the repository.

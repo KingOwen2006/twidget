@@ -18,7 +18,7 @@ First public release of Twidget, an X/Twitter follower dashboard and Samsung One
 - Background refresh on a configurable interval (15–240 minutes) via WorkManager, plus refresh-on-launch.
 - Included the optional FxTwitter/Rettiwt `bridge/` Node service for self-hosting and pooled history.
 - Bridge smoke tests and CI checks for security defaults, authentication, syntax, and dependency vulnerabilities.
-- Fifteen deterministic Android tests for provider fallback, analytics filtering/pagination, history migration, metric provenance, official-X likes handling, and encrypted credential envelopes.
+- Eighteen deterministic Android tests for provider fallback, analytics filtering/pagination, history migration, metric provenance, official-X likes handling, encrypted credential envelopes, and update-channel version selection.
 - Hidden debug menu, unlocked by tapping the version in About seven times: rerun onboarding, a dummy profile with an editable follower count for widget testing, and a log of bridge traffic.
 
 ### Changed

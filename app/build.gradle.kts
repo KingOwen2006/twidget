@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -5,11 +6,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Release signing config. Locally: read from keystore.properties (gitignored).
-// On CI: fall back to RELEASE_* environment variables. Absent either, release
-// builds stay unsigned so debug builds and contributors are unaffected.
+// Release signing config. Local production credentials live outside the
+// checkout by default, under ~/.config/twidget/keystore.properties. CI uses
+// RELEASE_* environment variables. Absent either, release builds stay
+// unsigned so debug builds and contributors are unaffected.
+val signingPropertiesFile = providers.gradleProperty("twidgetSigningProperties")
+    .orNull
+    ?.let { rootProject.file(it) }
+    ?: File(System.getProperty("user.home"), ".config/twidget/keystore.properties")
 val keystoreProperties = Properties().apply {
-    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    signingPropertiesFile.takeIf { it.isFile }?.inputStream()?.use { load(it) }
 }
 fun signingValue(propKey: String, envKey: String): String? =
     keystoreProperties.getProperty(propKey) ?: System.getenv(envKey)
@@ -77,7 +83,9 @@ android {
         }
         if (releaseStoreFile != null) {
             create("release") {
-                storeFile = file(releaseStoreFile)
+                storeFile = File(releaseStoreFile).let { path ->
+                    if (path.isAbsolute) path else signingPropertiesFile.parentFile.resolve(path)
+                }
                 storePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
                 keyAlias = signingValue("keyAlias", "RELEASE_KEY_ALIAS")
                 keyPassword = signingValue("keyPassword", "RELEASE_KEY_PASSWORD")

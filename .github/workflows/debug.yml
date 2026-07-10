@@ -35,6 +35,10 @@ jobs:
           npm audit --omit=dev
 
   build:
+    # Forked pull requests cannot receive the read:packages credential needed
+    # by the Tribalfs registry. Never switch this to pull_request_target: that
+    # would run untrusted contributor code with repository secrets.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

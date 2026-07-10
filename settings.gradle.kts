@@ -1,9 +1,15 @@
+import java.io.File
 import java.util.Properties
 
-// Credentials for the tribalfs/oneui-design GitHub Packages repo.
-// Locally: read from github.properties (gitignored). On CI: fall back to env vars.
+// Credentials for the tribalfs/oneui-design GitHub Packages repo. Local
+// credentials live outside the checkout under ~/.config/twidget. CI falls
+// back to environment variables.
+val githubPropertiesFile = File(
+    System.getProperty("user.home"),
+    ".config/twidget/github.properties",
+)
 val githubProperties = Properties().apply {
-    rootDir.resolve("github.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    githubPropertiesFile.takeIf { it.isFile }?.inputStream()?.use { load(it) }
 }
 val ghPackagesUser: String =
     githubProperties.getProperty("ghUsername") ?: System.getenv("GH_PACKAGES_USER") ?: ""

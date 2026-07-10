@@ -20,6 +20,18 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         super.onViewCreated(view, savedInstanceState)
         // The trailing inset draws the bottom rounding instead.
         listView.seslSetLastRoundedCorner(false)
+        // SESL gives the RecyclerView colorBackground (the white card colour),
+        // which becomes visible inside its edge-to-edge navigation-bar padding.
+        // Match the surrounding preference surface so that inset is seamless.
+        val surfaceAttributes = requireContext().obtainStyledAttributes(
+            intArrayOf(dev.oneuiproject.oneui.design.R.attr.roundedCornerColor)
+        )
+        val surfaceColor = try {
+            surfaceAttributes.getColor(0, 0)
+        } finally {
+            surfaceAttributes.recycle()
+        }
+        listView.setBackgroundColor(surfaceColor)
         val baseBottomPadding = listView.paddingBottom
         listView.clipToPadding = false
         ViewCompat.setOnApplyWindowInsetsListener(listView) { list, insets ->

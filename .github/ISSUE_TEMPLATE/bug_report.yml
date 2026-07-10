@@ -1,0 +1,57 @@
+name: Bug report
+description: Report reproducible incorrect behavior in the app or bridge
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not use this form for vulnerabilities. Follow SECURITY.md and remove tokens, account history, and other personal data from logs and screenshots.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Android app
+        - Home-screen widget
+        - Lock-screen or AOD widget
+        - Shared bridge
+        - Self-hosted bridge
+        - Build or documentation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Twidget version
+      placeholder: 1.0.0, 1.1.0-beta.2, or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Explain the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Android/One UI version, device model, selected data source, or Node version where relevant.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Never include API credentials, bridge tokens, database URLs, private history, or other people's personal data.

@@ -48,8 +48,13 @@
                 app:isCustomTitle="true">
 
                 <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/about_header_icon"
                     android:layout_width="96dp"
                     android:layout_height="96dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="@string/app_name"
+                    android:focusable="true"
                     app:srcCompat="@mipmap/ic_launcher" />
 
                 <TextView
@@ -179,7 +184,7 @@
             <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/about_credits_section" />
+                android:text="@string/about_developer_section" />
 
             <dev.oneuiproject.oneui.widget.RoundedLinearLayout
                 android:layout_width="match_parent"
@@ -196,13 +201,25 @@
                     app:summary="@string/about_tjg_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_tjg_title" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/about_credits_section" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/oneui_card_bg"
+                android:orientation="vertical">
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_kingowen_credit"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clickable="true"
-                    app:showTopDivider="true"
+                    app:showTopDivider="false"
                     app:summary="@string/about_kingowen_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_kingowen_title" />

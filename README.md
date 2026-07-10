@@ -79,9 +79,23 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 
 The app id is `com.tjg.twidget`.
 
+GitHub Packages credentials belong in
+`~/.config/twidget/github.properties`; start from
+[`github.properties.example`](github.properties.example) and keep the populated
+file outside the checkout. Production signing material is never required for a
+contributor build.
+
 The stable version is set in `version.properties`. Debug and beta APKs are
 labeled `v<version>-debug.N` and `v<version>-beta.N`; `N` is one plus the
 number of commits since the base version was set, so changing the stable
 version resets both channels to `.1`. Rebuilding the same commit keeps the
 same reproducible version. Use `-PprereleaseNumber=N` only when a non-Git build
 needs an explicit sequence number.
+
+## Project policies
+
+- [Security policy](SECURITY.md)
+- [Privacy and data handling](PRIVACY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Maintainer release process](docs/RELEASING.md)

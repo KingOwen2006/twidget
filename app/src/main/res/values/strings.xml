@@ -111,7 +111,7 @@
     <string name="advanced_options_summary">Configure self-hosted and X API sources</string>
     <string name="x_api_explainer">The official X API is not free for general v2 access. Bring your own developer credentials from a project with active paid or pay-per-use X API access, and Twidget will call X directly from your device.</string>
     <string name="fxtwitter_explainer">FxTwitter is a free public API that needs no credentials. Twidget calls it directly from your device. With shared history enabled, the Twidget bridge steps in as a fallback.</string>
-    <string name="bridge_explainer">The shared Twidget bridge powers the community history pool and acts as a backup for FxTwitter when it's unavailable. It is only contacted when shared history is on or a bridge source is selected.</string>
+    <string name="bridge_explainer">The shared Twidget bridge powers the community history pool and acts as a backup for FxTwitter when it\'s unavailable. It is only contacted when shared history is on or a bridge source is selected.</string>
     <string name="self_hosted_explainer">Run your own self-hosted bridge and point Twidget to it. When the URL is empty, the shared Twidget bridge is used instead. The optional token is sent as a Bearer token to protected instances.</string>
     <string name="source_info">About this source</string>
     <string name="bridge_status">Bridge status</string>
@@ -174,8 +174,9 @@
     <string name="add_widget_requested">Choose a spot on your home screen to place it.</string>
     <string name="add_widget_not_supported">This launcher does not support adding widgets from the app.</string>
     <string name="about">About</string>
-    <string name="about_summary">Twitter widget. It's literally the name. Clever right?</string>
-    <string name="about_credits_section">Credits</string>
+    <string name="about_summary">Twitter widget. It\'s literally the name. Clever right?</string>
+    <string name="about_developer_section">Made by</string>
+    <string name="about_credits_section">Thanks to</string>
     <string name="about_projects_section">Open source projects</string>
     <string name="about_tjg_title">That Josh Guy</string>
     <string name="about_tjg_summary">Created the app. Far too many red bulls consumed in the process.</string>
@@ -183,7 +184,7 @@
     <string name="about_kingowen_summary">Gave ideas, feedback and motivation.</string>
     <string name="about_fxtwitter_title">FxTwitter / FxEmbed</string>
     <string name="about_fxtwitter_summary">Default data source. Public profile, status, media, and recent-post analytics data</string>
-    <string name="about_oneui_summary">One UI interface components. The magic behind the app's design</string>
+    <string name="about_oneui_summary">One UI interface components. The magic behind the app\'s design</string>
     <string name="about_legal_section">Legal</string>
     <string name="about_open_source_licenses_title">Open Source Licences</string>
     <string name="about_open_source_licenses_summary">Apache License 2.0 • MIT License • BSD 3-Clause License • SIL Open Font License 1.1</string>

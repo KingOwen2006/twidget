@@ -1,4 +1,5 @@
-# Copy this file to "github.properties" and fill in your own values.
+# Copy this file to ~/.config/twidget/github.properties and restrict it to
+# your user (chmod 600). Never put the populated file inside a checkout.
 #
 # The oneui-design library is hosted on GitHub Packages, which requires
 # authentication even for public packages. Create a GitHub Personal Access

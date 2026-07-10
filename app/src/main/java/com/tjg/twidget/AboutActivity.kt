@@ -9,9 +9,12 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
@@ -50,6 +53,7 @@ class AboutActivity : FoldablePopOverActivity() {
         setupToolbar()
         setupTransparentAppBar()
         setupVersion()
+        setupHeaderIconBounce()
         setupCollapsingContent()
         setupCreditAvatars()
         setupUpdates()
@@ -181,6 +185,29 @@ class AboutActivity : FoldablePopOverActivity() {
                 this.text = text
                 setOnClickListener { onVersionTapped() }
             }
+        }
+    }
+
+    private fun setupHeaderIconBounce() {
+        findViewById<View>(R.id.about_header_icon).setOnClickListener { icon ->
+            icon.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            icon.animate().cancel()
+            icon.scaleX = 1f
+            icon.scaleY = 1f
+            icon.animate()
+                .scaleX(0.86f)
+                .scaleY(0.86f)
+                .setDuration(70L)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction {
+                    icon.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(320L)
+                        .setInterpolator(OvershootInterpolator(2.5f))
+                        .start()
+                }
+                .start()
         }
     }
 
