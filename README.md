@@ -13,8 +13,6 @@ Twitter widget app, with extra stats
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 
 [![Last Commit](https://img.shields.io/github/last-commit/thatjoshguy67/twidget)](https://github.com/thatjoshguy67/twidget/commits/)
-[![Issues](https://img.shields.io/github/issues-raw/thatjoshguy67/twidget?color=%23ff4400)](https://github.com/thatjoshguy67/twidget/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr-raw/thatjoshguy67/twidget?color=%23bb00bb)](https://github.com/thatjoshguy67/twidget/pulls)
 [![Contributors](https://img.shields.io/github/contributors/thatjoshguy67/twidget)](https://github.com/thatjoshguy67/twidget/graphs/contributors)
 
 <br>
