@@ -1,57 +1,79 @@
+<!--suppress HtmlDeprecatedAttribute CheckImageSize-->
+<div align="center">
+
+<img src="img/twidget-icon.png" height="150" alt="Twidget icon"/>
+
 # Twidget
 
-Twidget is an Android follower-count dashboard and widget app for X/Twitter profiles. It is forked from the One UI blur widget demo, keeps the Samsung One UI widget metadata, and turns the base into a follower tracker with home-screen blur widgets and lock-screen widgets.
+Twitter widget app, with extra stats
 
-## What is included
+[![Release](https://badgen.net/github/release/thatjoshguy67/twidget)](https://github.com/thatjoshguy67/twidget/releases)
+[![License](https://badgen.net/badge/license/MIT/blue)](LICENSE)
+[![API Level](https://badgen.net/badge/API/26%2B/green)](https://android-arsenal.com/api?level=26)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 
-- Dashboard for followers, following, posts, likes, and recent post reach/engagement analytics.
-- Weekly post analytics with best/quietest tweet cards, media previews, and view/reply/like counts.
-- Local and bridge-backed history with One UI-style metric charts.
-- Three-step One UI onboarding, plus multiple tracked accounts with a default-account selector.
-- Public FxTwitter data, the default bridge, self-hosted bridges, and the official X API with automatic fallback.
-- Background refresh on a configurable interval (WorkManager) plus refresh-on-launch.
-- Phone layout plus `sw600dp` tablet/foldable two-column layout.
-- Home-screen widgets (compact strip, 2x1, square, large) with tint, opacity, colour mode, logo, and font options.
-- Samsung lock-screen/AOD widget receivers (1x1 and 2x1) with monotone rendering.
+[![Last Commit](https://img.shields.io/github/last-commit/thatjoshguy67/twidget)](https://github.com/thatjoshguy67/twidget/commits/)
+[![Issues](https://img.shields.io/github/issues-raw/thatjoshguy67/twidget?color=%23ff4400)](https://github.com/thatjoshguy67/twidget/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr-raw/thatjoshguy67/twidget?color=%23bb00bb)](https://github.com/thatjoshguy67/twidget/pulls)
+[![Contributors](https://img.shields.io/github/contributors/thatjoshguy67/twidget)](https://github.com/thatjoshguy67/twidget/graphs/contributors)
+
+<br>
+
+<img loading="lazy" src="img/screenshot-4.jpg" height="350" alt="Twidget onboarding"/>
+<img loading="lazy" src="img/screenshot-3.jpg" height="350" alt="Follower analytics dashboard"/>
+<img loading="lazy" src="img/screenshot-1.jpg" height="350" alt="Home-screen widgets"/>
+<img loading="lazy" src="img/screenshot-2.jpg" height="350" alt="Lock-screen widgets"/>
+
+<br>
+
+<h3>
+  <a href="https://github.com/thatjoshguy67/twidget/releases/latest">Download the latest release</a>
+  &nbsp;|&nbsp;
+  <a href="https://github.com/thatjoshguy67/twidget/releases">See all releases & betas</a>
+</h3>
+
+</div>
+
+---
+
+## Features
+
+- Dashboard for all your Twitter account stats. Followers, following, impressions, engagement, etc...
+- View your best and worst tweets of the week.
+- Local or cloud based stats history
+- Track multiple accounts
+- One UI style app design
+- Blurred home screen widgets (One UI 7+ only)
+- Lock screen widget support (One UI 6.1+ only)
 
 ## Data sources
 
-Twidget can fetch stats a few ways. None of them are required to be the shared server — pick whichever fits:
+Twidget can fetch stats a few ways.
 
-1. **FxTwitter** — a free public FxTwitter/FxEmbed API source called directly from the app for both profile stats and weekly tweet analytics/media. No bridge or credentials are needed; it is best-effort because it follows public X/Twitter surface changes.
-2. **Default bridge** — a small community-hosted instance of [`bridge/`](bridge/) on Railway (`https://twidget-bridge-production.up.railway.app`). Zero setup; currently uses FxTwitter first and falls back to Rettiwt for profile lookups when possible.
-3. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself (any Node 22 host; on Railway it is `railway up` from the `bridge/` directory). Point Twidget at it under Settings → Advanced → Self hosted. Bridge routes include `GET /user/:username` and `GET /analytics/:username`.
-4. **Official X API (bring your own credentials)** — for direct official profile stats. Enter your X developer API key and secret (or an app-only bearer token) under Advanced options. The app exchanges and calls `api.x.com` **directly from your device**; your credentials never touch any Twidget server. Mind your tier's rate limits when choosing a refresh interval.
+1. **FxTwitter** — a free public FxTwitter/FxEmbed API source called directly from the app for both profile stats and weekly tweet analytics/media. No credentials are needed, calls happen on-device. 
+2. **Twidget bridge** — an externally hosted instance of [`bridge/`](bridge/). Currently uses FxTwitter first and falls back to Rettiwt for profile lookups when possible. Caches fetched results for other Twidget users.
+3. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself with any Node 22 host. Point Twidget at it under Settings → Advanced → Self hosted. Bridge routes include `GET /user/:username` and `GET /analytics/:username`. Supports bridge bearer tokens for added security.
+4. **Official X API (bring your own credentials)** — for direct official profile stats. Bring your own API keys and fetch data directly from X using their V2 API. This is not cheap, so only paying X API users can utilise this option. Twidget does not provide this. 
 
-The official X user response does not include a profile-wide likes count, so
-that one metric is filled from FxTwitter when available or left at the last
-known cached value. It is never treated as a real zero merely because X omitted it.
-
-FxTwitter analytics follows recent-status cursors with a strict safety cap. If
-the upstream reaches that cap or cycles a cursor, Twidget labels the result as
-a sampled status set instead of claiming it is the complete week.
-
-If the selected source fails, Twidget falls back to another configured source, then to cached stats. The app's bridge token setting is only for a protected self-hosted bridge; the included bridge uses Rettiwt guest lookup and does not need Rettiwt credentials.
-
-Shared history is opt-in. The bridge stores only accounts explicitly registered
-through the history route; normal profile lookups do not create persistent
-records. Client-uploaded backfill and Wayback archive scans are disabled by
-default because they weaken data trust and can amplify public-server load.
+> Shared history is opt-in. The [`bridge/`](bridge/) stores only accounts explicitly registered through the history route. Normal profile lookups do not create persistent records. 
 
 ## Credits
 
-- [That Josh Guy](https://tjg.gg) — design, development, and testing.
-- [KingOwenFYI](https://x.com/KingOwenFYI) — ideas, product feedback, and helping shape the rough edges into actual features.
+- [That Josh Guy](https://tjg.gg) — design, development, testing and many Red Bulls.
+- [KingOwenFYI](https://x.com/KingOwenFYI) — ideas and inspiration.
 - [FxTwitter / FxEmbed](https://github.com/FxEmbed/FxEmbed) — public X/Twitter profile, status, media, and recent-post analytics data.
-- [One UI Project](https://github.com/OneUIProject) — One UI components and icons used across the app.
+- [Rettiwt](https://github.com/Rishikant181/Rettiwt-API) — alternate Twitter/X profile stats API.
+- [One UI Project](https://github.com/OneUIProject) — One UI components used across the app.
+- [oneui-icons](https://github.com/thatjoshguy67/oneui-icons) - Iconography used throughout the app.
 
+---
 ## Dependencies and services
 
 - Android app: `oneui-design`, One UI icons, AndroidX WorkManager, and SESL SwipeRefreshLayout.
 - Bridge: Node 22, Express, FxTwitter/FxEmbed public APIs, and Rettiwt-API fallback support.
 - Optional bridge scaling: PostgreSQL for shared history and Redis for shared rate limits, response caches, and scheduled-job locks.
 
-## Build
+## Build it yourself
 
 ```bash
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:assembleDebug
@@ -65,12 +87,3 @@ number of commits since the base version was set, so changing the stable
 version resets both channels to `.1`. Rebuilding the same commit keeps the
 same reproducible version. Use `-PprereleaseNumber=N` only when a non-Git build
 needs an explicit sequence number.
-
-## Notes
-
-- Before the first successful sync, tracked accounts show zero/unknown values rather than demo follower counts.
-- **Self-hosted bridges must be HTTPS.** Android blocks cleartext `http://` traffic by default, so a plain-HTTP LAN bridge cannot load.
-- When a profile image is unavailable, Twidget falls back to `unavatar.io` to resolve an avatar by handle.
-- FxTwitter is public and credential-free, but still best-effort; X/Twitter changes can affect availability or response shape.
-- The official X API's free tier has tight read quotas; pick a longer refresh interval if you bring free-tier credentials.
-- Connector credentials are encrypted with an Android Keystore-backed AES-GCM key and are excluded from Android backup/device transfer.

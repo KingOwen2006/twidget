@@ -183,9 +183,11 @@
     <string name="about_fxtwitter_title">FxTwitter / FxEmbed</string>
     <string name="about_fxtwitter_summary">Public profile, status, media, and recent-post analytics data</string>
     <string name="about_oneui_summary">One UI interface components and widget integration libraries</string>
-    <string name="about_licenses_section">Libraries and services</string>
-    <string name="about_mit_title">Powered by</string>
-    <string name="about_mit_summary">FxTwitter/FxEmbed • Rettiwt-API • oneui-design • One UI icons • AndroidX WorkManager • SESL SwipeRefreshLayout • Express</string>
+    <string name="about_legal_section">Legal</string>
+    <string name="about_open_source_licenses_title">Open Source Licences</string>
+    <string name="about_open_source_licenses_summary">Apache License 2.0 • MIT License • BSD 3-Clause License • SIL Open Font License 1.1</string>
+    <string name="about_legal_disclaimer_title">Independent project</string>
+    <string name="about_legal_disclaimer_summary">Twidget is an independent, unofficial project. It is not affiliated with, authorised, sponsored, or endorsed by Samsung Electronics, X Corp., Google LLC, or any other third party referenced in the app. Samsung, One UI, X, Twitter, Google, Android, and related names and logos are trademarks of their respective owners.</string>
     <string name="about_repo_link">App repository</string>
     <string name="about_version">Version %1$s</string>
     <string name="app_info">App info</string>

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -11,8 +12,10 @@ import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -50,6 +53,9 @@ class AboutActivity : FoldablePopOverActivity() {
         }
         findViewById<View>(R.id.about_header_github).setOnClickListener {
             openUrl(getString(R.string.link_app_repo))
+        }
+        findViewById<View>(R.id.about_open_source_licenses).setOnClickListener {
+            showOpenSourceLicenses()
         }
     }
 
@@ -192,6 +198,26 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun openUrl(url: String) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    private fun showOpenSourceLicenses() {
+        val notices = resources.openRawResource(R.raw.open_source_licenses)
+            .bufferedReader()
+            .use { it.readText() }
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        val textView = TextView(this).apply {
+            text = notices
+            setTextColor(getColor(R.color.oneui_text_primary))
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(padding, padding / 2, padding, padding)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.about_open_source_licenses_title)
+            .setView(ScrollView(this).apply { addView(textView) })
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     companion object {

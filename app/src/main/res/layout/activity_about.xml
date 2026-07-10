@@ -219,7 +219,7 @@
             <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/about_licenses_section" />
+                android:text="@string/about_legal_section" />
 
             <dev.oneuiproject.oneui.widget.RoundedLinearLayout
                 android:layout_width="match_parent"
@@ -228,12 +228,22 @@
                 android:orientation="vertical">
 
                 <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_open_source_licenses"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:clickable="true"
                     app:showTopDivider="false"
-                    app:summary="@string/about_mit_summary"
+                    app:summary="@string/about_open_source_licenses_summary"
                     app:summaryMaxLines="6"
-                    app:title="@string/about_mit_title" />
+                    app:title="@string/about_open_source_licenses_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_legal_disclaimer_summary"
+                    app:summaryMaxLines="10"
+                    app:title="@string/about_legal_disclaimer_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
         </LinearLayout>
