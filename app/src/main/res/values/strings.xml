@@ -104,7 +104,7 @@
     <string name="source_fxtwitter">FxTwitter</string>
     <string name="source_fxtwitter_summary">Free public FxTwitter API</string>
     <string name="share_history">Contribute to shared history</string>
-    <string name="share_history_summary">Share your public account stats with the community for deeper charts from day one. When disabled, Twidget defaults to FxTwitter.</string>
+    <string name="share_history_summary">Share your public account stats with the community for deeper charts from day one, and let the Twidget Bridge run heavier work like the Hall of Fame scan. When disabled, Twidget does everything on-device via FxTwitter.</string>
     <string name="share_history_onboarding_summary">Optional: share your public account stats with the community for deeper charts from day one. When disabled, Twidget defaults to FxTwitter.</string>
     <string name="source_self_hosted">Self hosted Rettiwt</string>
     <string name="source_self_hosted_summary">Use your own bridge</string>
