@@ -56,8 +56,9 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew testBetaUnitTest assembleBeta lintVitalBeta \
-          -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
+        run: |
+          ./gradlew testBetaUnitTest assembleBeta lintVitalBeta \
+            -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
 
       - name: Read and validate beta version
         id: version
