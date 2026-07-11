@@ -276,13 +276,15 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
 
     private fun showAccountPopup(anchor: View, username: String, isDefault: Boolean) {
         val context = requireContext()
-        val setDefaultLabel = getString(R.string.set_as_default)
-        val importLabel = getString(R.string.import_x_analytics)
-        val deleteLabel = getString(R.string.delete)
-        val labels = buildList {
-            if (!isDefault) add(setDefaultLabel)
-            add(importLabel)
-            add(deleteLabel)
+        val actions = accountPopupActions(isDefault)
+        val labels = actions.map { action ->
+            getString(
+                when (action) {
+                    AccountPopupAction.SET_DEFAULT -> R.string.set_as_default
+                    AccountPopupAction.IMPORT_ANALYTICS -> R.string.import_x_analytics
+                    AccountPopupAction.DELETE -> R.string.delete
+                }
+            )
         }
         val popup = ListPopupWindow(context).apply {
             setAdapter(object : ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, labels) {
@@ -290,27 +292,33 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                     (super.getView(position, convertView, parent) as TextView).apply {
                         setTextColor(
                             context.getColor(
-                                if (labels[position] == deleteLabel) R.color.metric_red else R.color.oneui_text_primary
+                                if (actions[position] == AccountPopupAction.DELETE) {
+                                    R.color.metric_red
+                                } else {
+                                    R.color.oneui_text_primary
+                                }
                             )
                         )
                     }
             })
             anchorView = anchor
             width = dp(220)
-            height = ListPopupWindow.WRAP_CONTENT
+            // Samsung's popup measurement can collapse a multi-row adapter to
+            // its final row. Give every action a fixed native menu-row slot.
+            height = dp(56 * actions.size)
             isModal = true
             horizontalOffset = dp(40)
             verticalOffset = -dp(24)
         }
         popup.setOnItemClickListener { _, _, position, _ ->
             popup.dismiss()
-            when (labels[position]) {
-                setDefaultLabel -> {
+            when (actions[position]) {
+                AccountPopupAction.SET_DEFAULT -> {
                     save(settings.copy(username = username))
                     buildScreen()
                 }
-                importLabel -> beginAnalyticsImport(username)
-                deleteLabel -> deleteAccount(username)
+                AccountPopupAction.IMPORT_ANALYTICS -> beginAnalyticsImport(username)
+                AccountPopupAction.DELETE -> deleteAccount(username)
             }
         }
         popup.show()
@@ -383,4 +391,16 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.DATA_SOURCE_X_API -> getString(R.string.source_x_api)
         else -> getString(R.string.source_default)
     }
+}
+
+internal enum class AccountPopupAction {
+    SET_DEFAULT,
+    IMPORT_ANALYTICS,
+    DELETE,
+}
+
+internal fun accountPopupActions(isDefault: Boolean): List<AccountPopupAction> = buildList {
+    if (!isDefault) add(AccountPopupAction.SET_DEFAULT)
+    add(AccountPopupAction.IMPORT_ANALYTICS)
+    add(AccountPopupAction.DELETE)
 }
