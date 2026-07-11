@@ -84,7 +84,13 @@ jobs:
 
       - name: Verify production-signed debug APK
         if: github.event_name != 'pull_request'
-        run: apksigner verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::Unable to locate apksigner in the Android SDK"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
 
       - name: Read debug version
         id: version
