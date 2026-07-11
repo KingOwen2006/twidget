@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -32,16 +31,26 @@ class MetricChartView @JvmOverloads constructor(
         alpha = 170
     }
     private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = context.getColor(R.color.oneui_card_bg)
         textSize = 12f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val tooltipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_text_primary)
+        setShadowLayer(
+            6f * resources.displayMetrics.density,
+            0f,
+            3f * resources.displayMetrics.density,
+            Color.argb(90, 0, 0, 0),
+        )
+    }
+    private val tooltipStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_accent)
+        style = Paint.Style.STROKE
+        strokeWidth = resources.displayMetrics.density
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val barRect = RectF()
-    private val barPath = Path()
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
     private val numberFormat = NumberFormat.getIntegerInstance(Locale.US)
@@ -61,6 +70,9 @@ class MetricChartView @JvmOverloads constructor(
     private var touchMoved = false
 
     init {
+        // Paint shadows on custom shapes require software rendering. The view
+        // is small, and this keeps the tooltip visibly elevated in both themes.
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
         isClickable = true
         isFocusable = true
     }
@@ -138,14 +150,7 @@ class MetricChartView @JvmOverloads constructor(
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
             barPaint.alpha = if (sample.estimated) 80 else 255
-            val corner = minOf(barWidth / 2f, barHeight / 2f)
-            barPath.reset()
-            barPath.addRoundRect(
-                barRect,
-                floatArrayOf(corner, corner, corner, corner, 0f, 0f, 0f, 0f),
-                Path.Direction.CW,
-            )
-            canvas.drawPath(barPath, barPaint)
+            canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
             barPaint.alpha = 255
             if ((samples.lastIndex - index) % labelStep == 0) {
                 val labelWidth = labelPaint.measureText(sample.dayLabel)
@@ -287,6 +292,7 @@ class MetricChartView @JvmOverloads constructor(
 
         tooltipRect.set(rectLeft, rectTop, rectLeft + rectWidth, rectTop + rectHeight)
         canvas.drawRoundRect(tooltipRect, 14f * density, 14f * density, tooltipPaint)
+        canvas.drawRoundRect(tooltipRect, 14f * density, 14f * density, tooltipStrokePaint)
         canvas.drawText(
             label,
             rectLeft + horizontalPadding,

@@ -265,7 +265,9 @@ class MainActivity : EdgeToEdgeActivity() {
 
         val data = analytics
         val posts = listOfNotNull(
-            data?.best?.let { getString(R.string.best_post) to it },
+            data?.best?.let {
+                getString(if (data.postsAnalyzed == 1) R.string.only_post else R.string.best_post) to it
+            },
             data?.worst?.let { getString(R.string.worst_post) to it },
         )
         if (posts.isEmpty()) {

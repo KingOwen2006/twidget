@@ -43,6 +43,7 @@
     <string name="per_follower_pct">%1$s / follower</string>
     <string name="post_analytics">Recent posts</string>
     <string name="best_post">Best tweet this week</string>
+    <string name="only_post">Only tweet this week</string>
     <string name="worst_post">Quietest tweet this week</string>
     <string name="tweet_handle_and_date">\@%1$s · %2$s</string>
     <string name="account_handle">\@%1$s</string>
