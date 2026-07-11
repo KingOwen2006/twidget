@@ -43,6 +43,9 @@ data class HistorySample(
     val followingKnown: Boolean = true,
     val postsKnown: Boolean = true,
     val likesKnown: Boolean = true,
+    // Reconstructed locally from an X Analytics CSV selected for this account.
+    // Imported samples are never sent to the shared history pool.
+    val imported: Boolean = false,
 )
 
 data class TwidgetSettings(
@@ -523,6 +526,24 @@ object TwidgetStore {
             .apply()
     }
 
+    fun importFollowerHistory(context: Context, username: String, samples: List<HistorySample>): Int {
+        val cleanUsername = normalizeUsername(username)
+        require(cleanUsername.isNotBlank()) { "An account is required." }
+        require(accounts(context).any { it.equals(cleanUsername, ignoreCase = true) }) {
+            "The selected account is no longer tracked."
+        }
+        val imported = samples.filter { it.imported && it.followersKnown && !it.estimated }
+        require(imported.isNotEmpty()) { "The import contains no follower history." }
+        // A newer import can replace a previous import, while existing
+        // live/bridge observations are appended last and always win on overlap.
+        val saved = savedHistory(context, cleanUsername)
+        val next = mergeByDay(saved.filter { it.imported } + imported + saved.filterNot { it.imported })
+        prefs(context).edit()
+            .putString(historyKey(cleanUsername), JSONArray(next.map { historyToJson(it) }).toString())
+            .apply()
+        return imported.size
+    }
+
     // --- Live "today" delta -------------------------------------------------
     // Delta badges compare current values to yesterday's close when one is
     // recorded, else to the first values seen today (captured at the first
@@ -779,6 +800,7 @@ object TwidgetStore {
         .put("followingKnown", sample.followingKnown)
         .put("postsKnown", sample.postsKnown)
         .put("likesKnown", sample.likesKnown)
+        .apply { if (sample.imported) put("imported", true) }
         .apply { if (sample.estimated) put("est", true) }
 
     private fun historyFromJson(json: JSONObject): HistorySample = HistorySample(
@@ -793,6 +815,7 @@ object TwidgetStore {
         followingKnown = json.optBoolean("followingKnown", json.optLong("following", 0L) > 0L),
         postsKnown = json.optBoolean("postsKnown", json.optLong("posts", 0L) > 0L),
         likesKnown = json.optBoolean("likesKnown", json.optLong("likes", 0L) > 0L),
+        imported = json.optBoolean("imported", false),
     )
 
     // Older builds only recorded followers, so early samples can carry zero

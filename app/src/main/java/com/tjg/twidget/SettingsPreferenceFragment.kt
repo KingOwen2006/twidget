@@ -19,6 +19,8 @@ import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -30,6 +32,13 @@ import dev.oneuiproject.oneui.R as IconR
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
+    private var pendingAnalyticsAccount: String? = null
+    private val analyticsCsvPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val username = pendingAnalyticsAccount
+        pendingAnalyticsAccount = null
+        if (uri == null || username == null) return@registerForActivityResult
+        previewAnalyticsImport(username, uri)
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         settings = TwidgetStore.settings(requireContext())
@@ -263,9 +272,11 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private fun showAccountPopup(anchor: View, username: String, isDefault: Boolean) {
         val context = requireContext()
         val setDefaultLabel = getString(R.string.set_as_default)
+        val importLabel = getString(R.string.import_x_analytics)
         val deleteLabel = getString(R.string.delete)
         val labels = buildList {
             if (!isDefault) add(setDefaultLabel)
+            add(importLabel)
             add(deleteLabel)
         }
         val popup = ListPopupWindow(context).apply {
@@ -293,10 +304,67 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                     save(settings.copy(username = username))
                     buildScreen()
                 }
+                importLabel -> beginAnalyticsImport(username)
                 deleteLabel -> deleteAccount(username)
             }
         }
         popup.show()
+    }
+
+    private fun beginAnalyticsImport(username: String) {
+        val stats = TwidgetStore.currentStats(requireContext(), username)
+        if (!stats.followersKnown) {
+            Toast.makeText(requireContext(), R.string.analytics_import_sync_first, Toast.LENGTH_LONG).show()
+            return
+        }
+        pendingAnalyticsAccount = username
+        analyticsCsvPicker.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel"))
+    }
+
+    private fun previewAnalyticsImport(username: String, uri: android.net.Uri) {
+        val context = requireContext()
+        val stats = TwidgetStore.currentStats(context, username)
+        val result = runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                XAnalyticsCsvImporter.parse(reader, stats.followersCount)
+            } ?: throw IllegalArgumentException(getString(R.string.analytics_import_cannot_open))
+        }.getOrElse { error ->
+            Toast.makeText(
+                context,
+                getString(R.string.analytics_import_failed, error.message ?: getString(R.string.analytics_import_unknown_error)),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        AlertDialog.Builder(context)
+            .setTitle(R.string.import_x_analytics)
+            .setMessage(
+                getString(
+                    R.string.analytics_import_confirm,
+                    username.trimStart('@'),
+                    result.samples.size,
+                    result.firstDate.toString(),
+                    result.lastDate.toString(),
+                    TwidgetStore.compactNumber(stats.followersCount),
+                )
+            )
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.import_action) { _, _ ->
+                val imported = runCatching {
+                    TwidgetStore.importFollowerHistory(context, username, result.samples)
+                }.getOrElse { error ->
+                    Toast.makeText(
+                        context,
+                        getString(R.string.analytics_import_failed, error.message ?: getString(R.string.analytics_import_unknown_error)),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    return@setPositiveButton
+                }
+                TwidgetWidget.updateAll(context)
+                Toast.makeText(context, getString(R.string.analytics_import_complete, imported), Toast.LENGTH_LONG).show()
+            }
+            .show()
     }
 
     private fun deleteAccount(username: String) {
