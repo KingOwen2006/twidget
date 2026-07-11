@@ -12,21 +12,36 @@ export function prepareAnalyticsImport({ movements, currentFollowers, existing, 
   }
 
   let followers = currentFollowers;
-  const samplesDescending = normalized.movements.toReversed().map((movement) => {
-    const sample = {
-      dayLabel: dayLabel(movement.ts),
-      followers,
-      followersKnown: true,
-      followingKnown: false,
-      postsKnown: false,
-      likesKnown: false,
-      ts: movement.ts,
-      src: "x_analytics",
-    };
+  const samplesDescending = [];
+  let impossibleDetail;
+  normalized.movements.toReversed().forEach((movement, index) => {
+    if (impossibleDetail) return;
+    if (followers >= 0) {
+      samplesDescending.push({
+        dayLabel: dayLabel(movement.ts),
+        followers,
+        followersKnown: true,
+        followingKnown: false,
+        postsKnown: false,
+        likesKnown: false,
+        ts: movement.ts,
+        src: "x_analytics",
+      });
+    }
     followers -= movement.newFollows - movement.unfollows;
-    return sample;
+    const elapsedDays = index + 1;
+    const tolerance = trendTolerance(elapsedDays, currentFollowers);
+    if (followers < -tolerance) {
+      impossibleDetail = {
+        date: isoDay(movement.ts - DAY_MS),
+        expected: currentFollowers,
+        reconstructed: followers,
+        difference: Math.abs(followers),
+        tolerance,
+      };
+    }
   });
-  if (followers < 0) return failure("analytics_impossible_followers");
+  if (impossibleDetail) return failure("analytics_impossible_followers", impossibleDetail);
   const samples = samplesDescending.toReversed();
   const byDay = new Map(samples.map((sample) => [sample.ts, sample]));
   const trusted = (Array.isArray(existing) ? existing : [])

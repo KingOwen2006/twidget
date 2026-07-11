@@ -129,27 +129,38 @@ object XAnalyticsCsvImporter {
 
             var followers = anchorFollowers
             var netMovement = 0L
-            val samples = days.map { day ->
-                if (followers < 0L) impossibleCount(anchorFollowers, netMovement, day.date)
-                val sample = HistorySample(
-                    dayLabel = day.date.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)),
-                    followers = followers,
-                    following = 0L,
-                    posts = 0L,
-                    likes = 0L,
-                    timestamp = day.date.atStartOfDay(zoneId).toInstant().toEpochMilli(),
-                    followersKnown = true,
-                    followingKnown = false,
-                    postsKnown = false,
-                    likesKnown = false,
-                    imported = true,
-                )
+            val samplesDescending = mutableListOf<HistorySample>()
+            days.forEachIndexed { index, day ->
+                if (followers >= 0L) {
+                    samplesDescending += HistorySample(
+                        dayLabel = day.date.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)),
+                        followers = followers,
+                        following = 0L,
+                        posts = 0L,
+                        likes = 0L,
+                        timestamp = day.date.atStartOfDay(zoneId).toInstant().toEpochMilli(),
+                        followersKnown = true,
+                        followingKnown = false,
+                        postsKnown = false,
+                        likesKnown = false,
+                        imported = true,
+                    )
+                }
                 val movement = day.newFollows - day.unfollows
                 netMovement += movement
                 followers -= movement
-                sample
-            }.asReversed()
-            if (followers < 0L) impossibleCount(anchorFollowers, netMovement, days.last().date.minusDays(1))
+                val elapsedDays = index + 1
+                val tolerance = XAnalyticsImportPolicy.trendTolerance(elapsedDays, anchorFollowers)
+                if (followers < -tolerance) {
+                    impossibleCount(
+                        cachedFollowers = anchorFollowers,
+                        netMovement = netMovement,
+                        date = day.date.minusDays(1),
+                        tolerance = tolerance,
+                    )
+                }
+            }
+            val samples = samplesDescending.asReversed()
 
             return XAnalyticsImport(
                 samples = samples,
@@ -172,13 +183,19 @@ object XAnalyticsCsvImporter {
         }
     }
 
-    private fun impossibleCount(cachedFollowers: Long, netMovement: Long, date: LocalDate): Nothing {
+    private fun impossibleCount(
+        cachedFollowers: Long,
+        netMovement: Long,
+        date: LocalDate,
+        tolerance: Long,
+    ): Nothing {
         val reconstructed = cachedFollowers - netMovement
         throw AnalyticsCsvException(
             cachedFollowers = cachedFollowers,
             detectedFollowers = null,
             message = "The CSV reports a net gain of ${formatSigned(netMovement)} followers through $date. " +
-                "Working back from the cached count of $cachedFollowers produces an impossible count of $reconstructed.",
+                "Working back from the cached count of $cachedFollowers produces $reconstructed, " +
+                "outside the allowed discrepancy of $tolerance.",
         )
     }
 

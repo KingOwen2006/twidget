@@ -89,8 +89,8 @@ class XAnalyticsCsvImporterTest {
     fun `impossible reconstruction reports cached count and missing detection`() {
         val csv = """
             Date,New follows,Unfollows
-            "Sat, Jul 11, 2026",6,0
-            "Fri, Jul 10, 2026",6,0
+            "Sat, Jul 11, 2026",20,0
+            "Fri, Jul 10, 2026",0,0
         """.trimIndent()
 
         val error = runCatching {
@@ -103,8 +103,32 @@ class XAnalyticsCsvImporterTest {
 
         assertEquals(10L, error.cachedFollowers)
         assertEquals(null, error.detectedFollowers)
-        assertTrue(error.message.orEmpty().contains("+12"))
-        assertTrue(error.message.orEmpty().contains("-2"))
+        assertTrue(error.message.orEmpty().contains("+20"))
+        assertTrue(error.message.orEmpty().contains("-10"))
+        assertTrue(error.message.orEmpty().contains("discrepancy of 3"))
+    }
+
+    @Test
+    fun `tolerated account removals leave honest follower history gaps`() {
+        val today = LocalDate.of(2026, 7, 11)
+        val rows = (0 until 31).joinToString("\n") { offset ->
+            val date = today.minusDays(offset.toLong())
+                .format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, uuuu", java.util.Locale.US))
+            val follows = if (offset == 2) 4 else 0
+            "\"$date\",$follows,0"
+        }
+        val csv = "Date,New follows,Unfollows\n$rows"
+
+        val result = XAnalyticsCsvImporter.parse(
+            StringReader(csv),
+            anchorFollowers = 1,
+            today = today,
+        )
+
+        assertEquals(31, result.movements.size)
+        assertEquals(3, result.samples.size)
+        assertTrue(result.samples.all { it.followers >= 0 })
+        assertEquals("Jul 9", result.samples.first().dayLabel)
     }
 
     @Test
