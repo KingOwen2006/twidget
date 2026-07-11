@@ -51,6 +51,20 @@ workflow owns the tag and published asset.
 
 ## Local verification
 
+Trusted debug builds from `main` and manual runs of the **Debug Build** workflow
+are signed with the production certificate. Pull-request builds retain the
+checked-in debug certificate so pull-request code never receives production
+signing credentials. To build an interchangeable debug APK locally, use:
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./gradlew assembleDebug -PsignDebugWithRelease=true
+```
+
+This keeps the `-debug.N` version name but makes the APK signature compatible
+with beta and stable builds. It is a debuggable production-signed artifact and
+must not be published or shared.
+
 ```bash
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
   ./gradlew testDebugUnitTest assembleDebug lintDebug \

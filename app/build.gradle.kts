@@ -9,7 +9,7 @@ plugins {
 // Release signing config. Local production credentials live outside the
 // checkout by default, under ~/.config/twidget/keystore.properties. CI uses
 // RELEASE_* environment variables. Absent either, release builds stay
-// unsigned so debug builds and contributors are unaffected.
+// unsigned and debug builds keep using the checked-in debug key.
 val signingPropertiesFile = providers.gradleProperty("twidgetSigningProperties")
     .orNull
     ?.let { rootProject.file(it) }
@@ -20,6 +20,13 @@ val keystoreProperties = Properties().apply {
 fun signingValue(propKey: String, envKey: String): String? =
     keystoreProperties.getProperty(propKey) ?: System.getenv(envKey)
 val releaseStoreFile: String? = signingValue("storeFile", "RELEASE_STORE_FILE")
+val signDebugWithRelease = providers.gradleProperty("signDebugWithRelease")
+    .orNull
+    ?.toBooleanStrictOrNull()
+    ?: false
+require(!signDebugWithRelease || releaseStoreFile != null) {
+    "-PsignDebugWithRelease=true requires the release signing credentials"
+}
 
 val versionProperties = Properties().apply {
     rootProject.file("version.properties").inputStream().use { load(it) }
@@ -71,10 +78,10 @@ android {
     }
 
     signingConfigs {
-        // Checked-in debug keystore so every debug build — any machine, CI
-        // included — shares a signature and installs update in place.
-        // Debug-only: standard android/androiddebugkey credentials, no
-        // security value.
+        // Default for contributors and pull requests. Trusted builds can opt
+        // into the production certificate with -PsignDebugWithRelease=true so
+        // they install over beta/stable builds without changing the debug
+        // version suffix.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
@@ -96,6 +103,9 @@ android {
     buildTypes {
         debug {
             versionNameSuffix = "-debug.$prereleaseNumber"
+            if (signDebugWithRelease) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
             isMinifyEnabled = false
