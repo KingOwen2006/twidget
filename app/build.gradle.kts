@@ -49,10 +49,10 @@ fun git(vararg args: String): CommandResult = runCatching {
     CommandResult(process.waitFor(), process.inputStream.bufferedReader().use { it.readText().trim() })
 }.getOrElse { CommandResult(-1, "") }
 
-// A clean build's prerelease number is one plus the commit distance from the
-// commit that set the base version. Changing version.properties resets it to 1.
-// An explicit Gradle property remains available for non-Git build environments.
-val prereleaseNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIntOrNull()
+// Debug builds use the commit distance from the base-version change so every
+// main build remains identifiable. Beta releases have their own sequence,
+// supplied by the pre-release workflow, and reset to 1 for each base version.
+val debugNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIntOrNull()
     ?: run {
         val versionFileStatus = git("status", "--porcelain", "--", "version.properties")
         val versionCommit = git("log", "-1", "--format=%H", "--", "version.properties")
@@ -63,7 +63,9 @@ val prereleaseNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIn
                 .output.toIntOrNull()?.plus(1) ?: 1
         }
     }
-require(prereleaseNumber > 0) { "prereleaseNumber must be greater than zero" }
+val betaNumber = providers.gradleProperty("betaNumber").orNull?.toIntOrNull() ?: 1
+require(debugNumber > 0) { "prereleaseNumber must be greater than zero" }
+require(betaNumber > 0) { "betaNumber must be greater than zero" }
 
 android {
     namespace = "com.tjg.twidget"
@@ -102,7 +104,7 @@ android {
 
     buildTypes {
         debug {
-            versionNameSuffix = "-debug.$prereleaseNumber"
+            versionNameSuffix = "-debug.$debugNumber"
             if (signDebugWithRelease) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -113,7 +115,7 @@ android {
         }
         create("beta") {
             initWith(getByName("release"))
-            versionNameSuffix = "-beta.$prereleaseNumber"
+            versionNameSuffix = "-beta.$betaNumber"
             matchingFallbacks += listOf("release")
         }
     }
