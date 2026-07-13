@@ -2,7 +2,6 @@ package com.tjg.twidget
 
 import android.content.Intent
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -110,8 +109,13 @@ class NoticesActivity : FoldablePopOverActivity() {
         background = AppCompatResources.getDrawable(context, R.drawable.metric_card_clickable_bg)
         isClickable = true
         isFocusable = true
-        contentDescription = getString(R.string.notices_open_release, notice.title)
-        setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(notice.url))) }
+        contentDescription = getString(R.string.notices_open_changelog, notice.title)
+        setOnClickListener {
+            startRightSidePopOverActivity(
+                Intent(this@NoticesActivity, NoticeDetailActivity::class.java)
+                    .putExtra(NoticeDetailActivity.EXTRA_NOTICE_TAG, notice.tag)
+            )
+        }
 
         addView(LinearLayout(this@NoticesActivity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -132,13 +136,13 @@ class NoticesActivity : FoldablePopOverActivity() {
         addView(TextView(this@NoticesActivity).apply {
             text = body.ifBlank { getString(R.string.notices_no_details) }
             textSize = 14f
-            maxLines = 10
+            maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
             setLineSpacing(dp(2).toFloat(), 1f)
             setTextColor(getColor(R.color.oneui_text_primary))
             setPadding(0, dp(12), 0, 0)
         })
-        addView(metaText(getString(R.string.notices_view_on_github)).apply {
+        addView(metaText(getString(R.string.notices_view_changelog)).apply {
             setTextColor(getColor(R.color.oneui_accent))
         })
     }

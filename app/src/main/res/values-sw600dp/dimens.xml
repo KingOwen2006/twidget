@@ -2,4 +2,6 @@
 <resources>
     <!-- Foldable inner screens: pull the content into a centred column. -->
     <dimen name="onboarding_side_padding">96dp</dimen>
+    <dimen name="notice_detail_header_height">260dp</dimen>
+    <dimen name="notice_detail_content_padding">48dp</dimen>
 </resources>

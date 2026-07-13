@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/notice_detail_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg">
+
+    <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
+        android:id="@+id/notice_detail_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        app:roundedCorners="none">
+
+        <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:roundedCorners="none">
+
+            <ImageView
+                android:id="@+id/notice_detail_header"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/notice_detail_header_height"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:src="@drawable/notice_detail_header" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/notice_detail_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/oneui_bg"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/notice_detail_content_padding"
+                android:paddingTop="26dp"
+                android:paddingEnd="@dimen/notice_detail_content_padding"
+                android:paddingBottom="40dp"
+                app:roundedCorners="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/notice_detail_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sec"
+                        android:textColor="@color/oneui_text_primary"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/notice_detail_beta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="sec"
+                        android:text="@string/notices_beta"
+                        android:textColor="@color/oneui_accent"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/notice_detail_meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:fontFamily="sec"
+                    android:textColor="@color/oneui_text_secondary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/notice_detail_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="30dp"
+                    android:fontFamily="sec"
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@color/oneui_text_secondary"
+                    android:textIsSelectable="true"
+                    android:textSize="16sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="28dp"
+                    android:background="@color/oneui_divider" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/notice_detail_release_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="24dp"
+                    android:background="@drawable/onboarding_glass_button_bg"
+                    android:fontFamily="sec"
+                    android:text="@string/notices_view_on_github"
+                    android:textAllCaps="false"
+                    android:textColor="@color/oneui_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/notice_detail_update_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/import_primary_button_bg"
+                    android:fontFamily="sec"
+                    android:text="@string/notices_check_for_update"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+        </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+    </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
+
+    <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+        android:id="@+id/notice_detail_back"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="18dp"
+        android:layout_marginTop="18dp"
+        android:contentDescription="@string/notices_back"
+        android:elevation="8dp"
+        app:backgroundTint="#D926272A"
+        app:fabCustomSize="56dp"
+        app:srcCompat="@drawable/ic_oui_back"
+        app:tint="@android:color/white" />
+</FrameLayout>

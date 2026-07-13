@@ -209,7 +209,7 @@ class MainActivity : EdgeToEdgeActivity() {
             R.id.menu_notices -> {
                 ReleaseNoticesStore.markCurrentAsSeen(this)
                 invalidateOptionsMenu()
-                startLeftSidePopOverActivity(Intent(this, NoticesActivity::class.java))
+                startRightSidePopOverActivity(Intent(this, NoticesActivity::class.java))
             }
             R.id.menu_add_widget -> requestWidgetPin()
             R.id.menu_open_profile -> openActiveProfile()
@@ -1430,7 +1430,7 @@ class MainActivity : EdgeToEdgeActivity() {
 
     private fun setupScheduleAction() {
         findViewById<View>(R.id.schedule_fab).setOnClickListener {
-            startActivity(
+            startRightSidePopOverActivity(
                 Intent(this, ScheduleComposeActivity::class.java)
                     .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, selectedAccount)
             )

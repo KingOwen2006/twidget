@@ -190,7 +190,11 @@
     <string name="notices_beta">BETA</string>
     <string name="notices_no_details">No additional release details were published.</string>
     <string name="notices_view_on_github">View full release on GitHub</string>
-    <string name="notices_open_release">Open %1$s on GitHub</string>
+    <string name="notices_view_changelog">View changelog</string>
+    <string name="notices_changelog_title">Changelog</string>
+    <string name="notices_check_for_update">Check for updates</string>
+    <string name="notices_open_changelog">Open the changelog for %1$s</string>
+    <string name="notices_back">Back</string>
     <string name="notices_empty_title">No release notes yet</string>
     <string name="notices_empty_summary">Pull down to refresh. Published GitHub releases will appear here automatically.</string>
     <string name="notices_retry">Try again</string>
@@ -366,6 +370,8 @@
     <string name="schedule_compose_save">Save</string>
     <string name="schedule_compose_title">Compose tweet</string>
     <string name="schedule_ready_now">Ready to post now</string>
+    <string name="schedule_post_now">Post</string>
+    <string name="schedule_postpone_auto_summary">Posts automatically at the scheduled time via Postpone</string>
     <string name="schedule_one_image_attached">1 image attached</string>
     <string name="schedule_images_attached">%1$d images attached</string>
     <string name="schedule_swipe_duplicate_hint">Swipe right to duplicate</string>
@@ -405,6 +411,8 @@
     <string name="schedule_move_up">Move up</string>
     <string name="schedule_move_down">Move down</string>
     <string name="schedule_remove_item">Remove</string>
+    <string name="schedule_remove_thread">Remove tweet from thread</string>
+    <string name="schedule_remove_media">Remove attached media</string>
     <string name="schedule_public_url_hint">https://example.com/image.jpg</string>
     <string name="schedule_add">Add</string>
     <string name="schedule_invalid_public_url">Enter a valid public HTTP or HTTPS URL.</string>

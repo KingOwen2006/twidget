@@ -6,13 +6,35 @@ import dev.oneuiproject.oneui.ktx.startPopOverActivity
 import dev.oneuiproject.oneui.popover.PopOverOptions
 
 fun Activity.startLeftSidePopOverActivity(intent: Intent) {
+    startSidePopOverActivity(intent, PopOverSide.LEFT)
+}
+
+fun Activity.startRightSidePopOverActivity(intent: Intent) {
+    startSidePopOverActivity(intent, PopOverSide.RIGHT)
+}
+
+private fun Activity.startSidePopOverActivity(intent: Intent, side: PopOverSide) {
+    // Keep the preferred side even while the target is full-screen so a live
+    // fold/unfold transition can recreate it on the intended side.
+    intent.putExtra(FoldablePopOverActivity.EXTRA_POPOVER_SIDE, side.name)
     if (resources.configuration.smallestScreenWidthDp >= FoldablePopOverActivity.MIN_POPOVER_WIDTH_DP) {
         intent.putExtra(FoldablePopOverActivity.EXTRA_POPOVER, true)
-        startPopOverActivity(intent, PopOverOptions.centerLeftAnchored(this))
+        startPopOverActivity(
+            intent,
+            when (side) {
+                PopOverSide.LEFT -> PopOverOptions.centerLeftAnchored(this)
+                PopOverSide.RIGHT -> PopOverOptions.centerRightAnchored(this)
+            },
+        )
     } else {
         intent.removeExtra(FoldablePopOverActivity.EXTRA_POPOVER)
         startActivity(intent)
     }
+}
+
+enum class PopOverSide {
+    LEFT,
+    RIGHT,
 }
 
 fun Activity.startSettingsSubActivity(intent: Intent) {

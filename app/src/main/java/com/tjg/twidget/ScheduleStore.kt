@@ -20,14 +20,15 @@ class ScheduleStore(context: Context) {
 
     fun upsert(post: ScheduledPost): ScheduledPost = synchronized(lock) {
         val posts = readAllLocked().toMutableList()
+        val previous = posts.toList()
         val index = posts.indexOfFirst { it.id == post.id }
         if (index < 0) {
             posts += post
         } else {
-            releaseRemovedLocalMedia(posts[index], post)
             posts[index] = post
         }
         writeAllLocked(posts)
+        releaseUnusedLocalMedia(previous, posts)
         post
     }
 
@@ -56,7 +57,7 @@ class ScheduleStore(context: Context) {
         val removed = posts.firstOrNull { it.id == id } ?: return@synchronized false
         val remaining = posts.filterNot { it.id == id }
         writeAllLocked(remaining)
-        releaseLocalMedia(removed)
+        releaseUnusedLocalMedia(posts, remaining)
         ScheduleChecklistProgress.clear(appContext, removed.id)
         true
     }
@@ -69,9 +70,10 @@ class ScheduleStore(context: Context) {
                 normalizeAccount(it.accountUsername) == normalized
         }
         if (removed.isEmpty()) return@synchronized emptyList()
-        writeAllLocked(posts - removed.toSet())
+        val remaining = posts - removed.toSet()
+        writeAllLocked(remaining)
+        releaseUnusedLocalMedia(posts, remaining)
         removed.forEach {
-            releaseLocalMedia(it)
             ScheduleChecklistProgress.clear(appContext, it.id)
         }
         removed
@@ -111,19 +113,22 @@ class ScheduleStore(context: Context) {
     private fun normalizeAccount(account: String): String =
         account.trim().trimStart('@').lowercase()
 
-    private fun releaseRemovedLocalMedia(previous: ScheduledPost, next: ScheduledPost) {
-        val retained = next.localMediaUris()
-        previous.localMediaUris().filterNot(retained::contains).forEach(::releaseUri)
-    }
-
-    private fun releaseLocalMedia(post: ScheduledPost) {
-        post.localMediaUris().forEach(::releaseUri)
+    private fun releaseUnusedLocalMedia(
+        previous: Collection<ScheduledPost>,
+        next: Collection<ScheduledPost>,
+    ) {
+        val retained = next.flatMap { it.localMediaUris() }.toSet()
+        previous.flatMap { it.localMediaUris() }
+            .toSet()
+            .filterNot(retained::contains)
+            .forEach(::releaseUri)
     }
 
     private fun ScheduledPost.localMediaUris(): Set<String> =
         thread.flatMap { item -> item.media.filterIsInstance<LocalUriMedia>().map(LocalUriMedia::uri) }.toSet()
 
     private fun releaseUri(value: String) {
+        if (ScheduleOwnedMedia.delete(appContext, value)) return
         runCatching {
             appContext.contentResolver.releasePersistableUriPermission(
                 Uri.parse(value),

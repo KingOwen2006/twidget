@@ -2,17 +2,17 @@ package com.tjg.twidget
 
 import android.Manifest
 import android.app.AlarmManager
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.text.InputType
 import android.view.Menu
 import android.view.MenuItem
+import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -21,6 +21,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.FileProvider
+import androidx.picker.app.SeslDatePickerDialog
+import androidx.picker.app.SeslTimePickerDialog
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.io.File
 import java.text.SimpleDateFormat
@@ -61,23 +63,35 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     private val localMediaPicker = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(SchedulePolicy.MAX_MEDIA_PER_ITEM)
     ) { uris ->
-            val target = editorItems.getOrNull(mediaTarget) ?: return@registerForActivityResult
-            val room = SchedulePolicy.MAX_MEDIA_PER_ITEM - target.media.size
-            uris.take(room.coerceAtLeast(0)).forEach { uri ->
-                val persisted = runCatching {
-                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }.isSuccess
-                if (persisted) {
-                    target.media += LocalUriMedia(
-                        uri = uri.toString(),
-                        displayName = uri.lastPathSegment,
-                        mimeType = contentResolver.getType(uri),
-                    )
-                } else {
-                    toast(R.string.schedule_media_permission_failed)
+        val target = editorItems.getOrNull(mediaTarget) ?: return@registerForActivityResult
+        val room = SchedulePolicy.MAX_MEDIA_PER_ITEM - target.media.size
+        val selected = uris.take(room.coerceAtLeast(0))
+        if (selected.isEmpty()) return@registerForActivityResult
+        val targetId = target.id
+        setBusy(true)
+        AppExecutors.execute(
+            onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
+        ) {
+            val imported = selected.mapNotNull(::importPickedMedia)
+            runOnUiThread {
+                setBusy(false)
+                if (isFinishing || isDestroyed) {
+                    imported.forEach { it.file.delete() }
+                    return@runOnUiThread
                 }
+                val currentTarget = editorItems.firstOrNull { it.id == targetId }
+                if (currentTarget == null) {
+                    imported.forEach { it.file.delete() }
+                    return@runOnUiThread
+                }
+                val currentRoom = SchedulePolicy.MAX_MEDIA_PER_ITEM - currentTarget.media.size
+                val retained = imported.take(currentRoom.coerceAtLeast(0))
+                currentTarget.media += retained.map(ImportedMedia::source)
+                imported.drop(retained.size).forEach { it.file.delete() }
+                if (imported.size < selected.size) toast(R.string.schedule_media_permission_failed)
+                composeUi.refreshMediaForActiveItem()
             }
-            composeUi.refreshMediaForActiveItem()
+        }
     }
 
     private val cameraCapture = registerForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
@@ -117,8 +131,10 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         editorPost = intent.getStringExtra(EXTRA_SCHEDULE_ID)?.let(store::get)
         editorProvider = editorPost?.provider ?: ScheduleSettingsStore.defaultProvider(this)
         editorAccount = resolveEditorAccount(editorPost)
+        val requestedTime = intent.getLongExtra(EXTRA_SCHEDULED_AT, -1L).takeIf { it > 0L }
         editorTime = Calendar.getInstance().apply {
-            timeInMillis = editorPost?.scheduledAt?.takeIf { it > System.currentTimeMillis() }
+            timeInMillis = editorPost?.scheduledAt?.takeIf { it > 0L }
+                ?: requestedTime
                 ?: (System.currentTimeMillis() + 60 * 60 * 1000L)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
@@ -129,6 +145,11 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
         composeUi = ScheduleComposeUi(this, root)
         composeUi.bind()
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) cleanupUnstoredOwnedMedia(editorItems.flatMap { it.media })
+        super.onDestroy()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -206,6 +227,45 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     internal fun onComposePickTimeRequested() = pickDate()
 
+    private fun importPickedMedia(uri: Uri): ImportedMedia? {
+        val mimeType = runCatching { contentResolver.getType(uri) }.getOrNull()
+        val displayName = runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+            ?.takeIf { it.matches(Regex("[A-Za-z0-9]{1,8}")) }
+            ?: displayName?.substringAfterLast('.', "")
+                ?.takeIf { it.matches(Regex("[A-Za-z0-9]{1,8}")) }
+        val directory = File(filesDir, "scheduled-media").apply { mkdirs() }
+        val file = File(
+            directory,
+            buildString {
+                append("picker-")
+                append(UUID.randomUUID())
+                extension?.let { append('.').append(it.lowercase(Locale.ROOT)) }
+            },
+        )
+        return runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            } ?: error("Unable to read selected media")
+            val ownedUri = FileProvider.getUriForFile(this, "$packageName.update_files", file)
+            ImportedMedia(
+                source = LocalUriMedia(
+                    uri = ownedUri.toString(),
+                    displayName = displayName,
+                    mimeType = mimeType,
+                ),
+                file = file,
+            )
+        }.getOrElse {
+            file.delete()
+            null
+        }
+    }
+
     internal fun onComposeDownloadMedia(itemIndex: Int, mediaIndex: Int? = null) {
         val item = editorItems.getOrNull(itemIndex) ?: return
         val media = mediaIndex?.let { item.media.getOrNull(it)?.let(::listOf) } ?: item.media
@@ -243,7 +303,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     internal fun onComposeRemoveThreadRequested(index: Int) {
         if (editorItems.size <= 1 || index !in editorItems.indices) return
-        editorItems.removeAt(index)
+        cleanupUnstoredOwnedMedia(editorItems.removeAt(index).media)
         composeUi.refreshFromEditor()
     }
 
@@ -255,7 +315,10 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     }
     internal fun composeItemMedia(index: Int): List<ScheduleMediaSource> = editorItems.getOrNull(index)?.media.orEmpty()
     internal fun composeRemoveMedia(itemIndex: Int, mediaIndex: Int) {
-        editorItems.getOrNull(itemIndex)?.media?.removeAt(mediaIndex)
+        val media = editorItems.getOrNull(itemIndex)?.media ?: return
+        if (mediaIndex !in media.indices) return
+        val removed = media.removeAt(mediaIndex)
+        cleanupUnstoredOwnedMedia(listOf(removed))
         invalidateOptionsMenu()
     }
     internal fun composeHasContent(): Boolean = editorItems.any { it.text.isNotBlank() || it.media.isNotEmpty() }
@@ -329,14 +392,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     }
 
     private fun pickDate() {
-        DatePickerDialog(this, { _, year, month, day ->
+        SeslDatePickerDialog(this, { _, year, month, day ->
             editorTime.set(year, month, day)
             pickTime()
         }, editorTime.get(Calendar.YEAR), editorTime.get(Calendar.MONTH), editorTime.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun pickTime() {
-        TimePickerDialog(this, { _, hour, minute ->
+        SeslTimePickerDialog(this, { _, hour, minute ->
             editorTime.set(Calendar.HOUR_OF_DAY, hour)
             editorTime.set(Calendar.MINUTE, minute)
             composeUi.refreshTimeSummary()
@@ -485,6 +548,19 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         invalidateOptionsMenu()
     }
 
+    private fun cleanupUnstoredOwnedMedia(sources: Collection<ScheduleMediaSource>) {
+        val candidates = sources.filterIsInstance<LocalUriMedia>().map(LocalUriMedia::uri).toSet()
+        if (candidates.isEmpty()) return
+        val retained = runCatching {
+            store.list().flatMap { post ->
+                post.thread.flatMap { item ->
+                    item.media.filterIsInstance<LocalUriMedia>().map(LocalUriMedia::uri)
+                }
+            }.toSet()
+        }.getOrDefault(emptySet())
+        candidates.filterNot(retained::contains).forEach { ScheduleOwnedMedia.delete(this, it) }
+    }
+
     private fun showErrors(errors: List<String>) {
         AlertDialog.Builder(this)
             .setTitle(R.string.schedule_error_title)
@@ -502,9 +578,15 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         val media: MutableList<ScheduleMediaSource> = mutableListOf(),
     )
 
+    private data class ImportedMedia(
+        val source: LocalUriMedia,
+        val file: File,
+    )
+
     companion object {
         const val EXTRA_USERNAME = "com.tjg.twidget.extra.COMPOSE_USERNAME"
         const val EXTRA_SCHEDULE_ID = "com.tjg.twidget.extra.COMPOSE_SCHEDULE_ID"
+        const val EXTRA_SCHEDULED_AT = "com.tjg.twidget.extra.COMPOSE_SCHEDULED_AT"
         private const val MAX_THREAD_ITEMS = 20
     }
 }

@@ -25,13 +25,23 @@ abstract class FoldablePopOverActivity : EdgeToEdgeActivity() {
         isChangingPresentation = true
         window.decorView.post {
             if (isFinishing || isDestroyed) return@post
-            startLeftSidePopOverActivity(Intent(intent))
+            val restartIntent = Intent(intent)
+            if (popoverSide() == PopOverSide.RIGHT) {
+                startRightSidePopOverActivity(restartIntent)
+            } else {
+                startLeftSidePopOverActivity(restartIntent)
+            }
             finish()
         }
     }
 
+    private fun popoverSide(): PopOverSide = runCatching {
+        PopOverSide.valueOf(intent.getStringExtra(EXTRA_POPOVER_SIDE) ?: PopOverSide.LEFT.name)
+    }.getOrDefault(PopOverSide.LEFT)
+
     companion object {
         const val EXTRA_POPOVER = "com.tjg.twidget.extra.POPOVER"
+        const val EXTRA_POPOVER_SIDE = "com.tjg.twidget.extra.POPOVER_SIDE"
         const val MIN_POPOVER_WIDTH_DP = 600
     }
 }

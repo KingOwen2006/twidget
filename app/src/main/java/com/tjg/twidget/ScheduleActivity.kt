@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
+import android.view.GestureDetector
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -24,6 +25,7 @@ import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.widget.FloatingActionBar
 import dev.oneuiproject.oneui.widget.CardItemView
 import dev.oneuiproject.oneui.widget.RoundedLinearLayout
+import dev.oneuiproject.oneui.widget.RoundedNestedScrollView
 import dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
 import java.text.DateFormat
 import java.time.DayOfWeek
@@ -33,15 +35,20 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.abs
 import dev.oneuiproject.oneui.R as OneUiIconR
+import dev.oneuiproject.oneui.design.R as OneUiDesignR
 
 class ScheduleActivity : FoldablePopOverActivity() {
     private lateinit var content: LinearLayout
     private lateinit var primaryButton: ScrollAwareFloatingActionButton
     private lateinit var queueRoot: View
+    private lateinit var switcherHost: FrameLayout
+    private lateinit var queueSwitcher: FloatingActionBar
+    private lateinit var scroll: RoundedNestedScrollView
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
 
@@ -57,6 +64,9 @@ class ScheduleActivity : FoldablePopOverActivity() {
         content = findViewById(R.id.schedule_content)
         primaryButton = findViewById(R.id.schedule_primary_button)
         queueRoot = findViewById(R.id.schedule_root)
+        switcherHost = findViewById(R.id.schedule_switcher_host)
+        scroll = findViewById(R.id.schedule_scroll)
+        setupQueueViewSwitcher()
         findViewById<ToolbarLayout>(R.id.schedule_root)
             .setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         applyEdgeToEdgeInsets(findViewById(R.id.schedule_root)) { inset ->
@@ -124,11 +134,30 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private fun renderQueue() {
         showQueueMode()
         content.removeAllViews()
-        addQueueViewFilters()
         val username = requestedUsername()
         val allPosts = if (username.isBlank()) store.list() else store.listForAccount(username)
         val posts = allPosts.filter { selectedQueueStatus == null || it.status == selectedQueueStatus }
-        if (selectedQueueView == ScheduleQueueView.CALENDAR) {
+        val calendarMode = selectedQueueView == ScheduleQueueView.CALENDAR
+        scroll.setPadding(
+            scroll.paddingLeft,
+            scroll.paddingTop,
+            scroll.paddingRight,
+            if (calendarMode) 0 else dp(104),
+        )
+        scroll.isVerticalScrollBarEnabled = !calendarMode
+        scroll.overScrollMode = if (calendarMode) {
+            View.OVER_SCROLL_NEVER
+        } else {
+            View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        content.setPadding(
+            content.paddingLeft,
+            content.paddingTop,
+            content.paddingRight,
+            if (calendarMode) 0 else dp(24),
+        )
+        if (calendarMode) scroll.scrollTo(0, 0)
+        if (calendarMode) {
             renderCalendar(posts)
         } else if (posts.isEmpty()) {
             content.addView(emptyState())
@@ -144,8 +173,8 @@ class ScheduleActivity : FoldablePopOverActivity() {
         TwidgetFonts.applyTo(content)
     }
 
-    private fun addQueueViewFilters() {
-        content.addView(FloatingActionBar(this).apply {
+    private fun setupQueueViewSwitcher() {
+        queueSwitcher = FloatingActionBar(this).apply {
             setButtonLabel(0, getString(R.string.schedule_view_list))
             setButtonLabel(1, getString(R.string.schedule_view_calendar))
             setButtonIcon(0, ContextCompat.getDrawable(context, OneUiIconR.drawable.ic_oui_list))
@@ -153,22 +182,45 @@ class ScheduleActivity : FoldablePopOverActivity() {
             post {
                 if (selectedQueueView == ScheduleQueueView.CALENDAR) setSelectedButton(1)
                 setOnButtonSelectedListener { index ->
-                    selectedQueueView = if (index == 0) ScheduleQueueView.LIST else ScheduleQueueView.CALENDAR
+                    val next = if (index == 0) ScheduleQueueView.LIST else ScheduleQueueView.CALENDAR
+                    if (next == selectedQueueView) return@setOnButtonSelectedListener
+                    selectedQueueView = next
                     selectedCalendarDate = null
-                    renderQueue()
+                    animateQueueModeChange(if (index == 0) -1 else 1)
                 }
             }
-            layoutParams = LinearLayout.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { setMargins(dp(8), dp(10), dp(8), dp(20)) }
-        })
+            )
+        }
+        switcherHost.addView(queueSwitcher)
+    }
+
+    private fun animateQueueModeChange(direction: Int) {
+        val travel = dp(18).toFloat() * direction
+        content.animate().cancel()
+        content.animate()
+            .alpha(0f)
+            .translationX(-travel)
+            .setDuration(110)
+            .withEndAction {
+                renderQueue()
+                content.translationX = travel
+                content.animate().alpha(1f).translationX(0f).setDuration(170).start()
+            }
+            .start()
     }
 
     private fun renderCalendar(posts: List<ScheduledPost>) {
         val zoneId = ZoneId.systemDefault()
         content.addView(calendarHeader())
         content.addView(calendarGrid(posts, zoneId))
+        if (scroll.height == 0) {
+            scroll.post {
+                if (!isFinishing && selectedQueueView == ScheduleQueueView.CALENDAR) renderQueue()
+            }
+        }
     }
 
     private fun calendarHeader(): View = LinearLayout(this).apply {
@@ -176,9 +228,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(10), dp(8), dp(10), dp(8))
         addView(actionButton("‹") {
-            calendarMonth = calendarMonth.minusMonths(1)
-            selectedCalendarDate = null
-            renderQueue()
+            changeCalendarMonth(-1)
         }.apply { contentDescription = getString(R.string.schedule_previous_month) })
         addView(TextView(this@ScheduleActivity).apply {
             text = calendarMonth.format(DateTimeFormatter.ofPattern("MMMM", Locale.getDefault())).uppercase(Locale.getDefault())
@@ -188,9 +238,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
         }, LinearLayout.LayoutParams(0, dp(48), 1f))
         addView(actionButton("›") {
-            calendarMonth = calendarMonth.plusMonths(1)
-            selectedCalendarDate = null
-            renderQueue()
+            changeCalendarMonth(1)
         }.apply { contentDescription = getString(R.string.schedule_next_month) })
     }
 
@@ -199,8 +247,20 @@ class ScheduleActivity : FoldablePopOverActivity() {
         setPadding(dp(8), dp(4), dp(8), dp(12))
         val firstDay = calendarMonth.atDay(1)
         val leadingDays = (firstDay.dayOfWeek.value - DayOfWeek.MONDAY.value + 7) % 7
-        val today = LocalDate.now()
-
+        val rowCount = (leadingDays + calendarMonth.lengthOfMonth() + 6) / 7
+        val viewportHeight = scroll.height.takeIf { it > 0 }
+            ?: (resources.displayMetrics.heightPixels - dp(220))
+        val gridPadding = dp(16)
+        val weekHeaderHeight = dp(28)
+        val rowMargins = dp(4) * (rowCount + 1)
+        val dayHeight = ((
+            viewportHeight - dp(58) - content.paddingTop - content.paddingBottom -
+                gridPadding - weekHeaderHeight - rowMargins
+            ) / rowCount).coerceAtLeast(dp(44))
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            gridPadding + weekHeaderHeight + rowMargins + dayHeight * rowCount,
+        )
         DayOfWeek.entries.forEachIndexed { column, day ->
             addView(TextView(this@ScheduleActivity).apply {
                 text = day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
@@ -211,7 +271,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             }, calendarCellParams(0, column, dp(28)))
         }
         repeat(leadingDays) { position ->
-            addView(calendarDayCell(null, emptyList()), calendarCellParams(position / 7 + 1, position % 7, dp(116)))
+            addView(calendarDayCell(null, emptyList()), calendarCellParams(position / 7 + 1, position % 7, dayHeight))
         }
         repeat(calendarMonth.lengthOfMonth()) { offset ->
             val date = calendarMonth.atDay(offset + 1)
@@ -219,7 +279,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             val row = position / 7 + 1
             val column = position % 7
             val datedPosts = ScheduleCalendar.postsOnDate(posts, date, zoneId)
-            addView(calendarDayCell(date, datedPosts), calendarCellParams(row, column, dp(116)))
+            addView(calendarDayCell(date, datedPosts), calendarCellParams(row, column, dayHeight))
         }
     }
 
@@ -231,32 +291,104 @@ class ScheduleActivity : FoldablePopOverActivity() {
             cornerRadius = dp(5).toFloat()
             setColor(ContextCompat.getColor(context, R.color.schedule_calendar_cell))
         }
+        bindCalendarCellGestures(this, date, posts)
         if (date == null) return@apply
         addView(TextView(this@ScheduleActivity).apply {
             text = date.dayOfMonth.toString()
             textSize = 14f
-            typeface = TwidgetFonts.oneUiSans(context, 600)
-            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+            typeface = TwidgetFonts.oneUiSans(context, if (date == LocalDate.now()) 700 else 600)
+            setTextColor(ContextCompat.getColor(
+                context,
+                if (date == LocalDate.now()) R.color.oneui_accent else R.color.oneui_text_primary,
+            ))
         })
-        posts.firstOrNull()?.let { post ->
+        posts.take(2).forEach { post ->
             addView(TextView(this@ScheduleActivity).apply {
-                text = post.thread.firstOrNull()?.text?.take(36)?.ifBlank { getString(R.string.schedule_media_post) }
+                val mediaCount = post.thread.sumOf { it.media.size }
+                text = buildString {
+                    append(post.thread.firstOrNull()?.text?.take(42)?.ifBlank {
+                        getString(R.string.schedule_media_post)
+                    })
+                    if (mediaCount > 0) append("\n▣ $mediaCount")
+                }
                 textSize = 8f
-                maxLines = 4
+                maxLines = 3
                 setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
                 setPadding(dp(4), dp(4), dp(4), dp(4))
                 background = GradientDrawable().apply {
                     cornerRadius = dp(3).toFloat()
                     setColor(ContextCompat.getColor(context, R.color.schedule_calendar_post))
                 }
-                setOnClickListener { openEditor(post) }
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(4) })
+                bindCalendarCellGestures(this, date, listOf(post))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply {
+                topMargin = dp(3)
+            })
         }
-        if (posts.size > 1) addView(TextView(this@ScheduleActivity).apply {
-            text = "+${posts.size - 1}"
+        if (posts.size > 2) addView(TextView(this@ScheduleActivity).apply {
+            text = "+${posts.size - 2}"
             textSize = 8f
             gravity = Gravity.END
         })
+    }
+
+    private fun bindCalendarCellGestures(
+        cell: View,
+        date: LocalDate?,
+        posts: List<ScheduledPost>,
+    ) {
+        val detector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(event: MotionEvent): Boolean = true
+
+            override fun onSingleTapUp(event: MotionEvent): Boolean {
+                if (date == null) return false
+                posts.firstOrNull()?.let { openEditor(it) } ?: openEditor(null, date)
+                return true
+            }
+
+            override fun onFling(
+                first: MotionEvent?,
+                second: MotionEvent,
+                velocityX: Float,
+                velocityY: Float,
+            ): Boolean {
+                first ?: return false
+                val dx = second.x - first.x
+                if (abs(dx) < dp(56) || abs(dx) < abs(second.y - first.y)) return false
+                changeCalendarMonth(if (dx < 0) 1 else -1)
+                return true
+            }
+        })
+        cell.isClickable = true
+        cell.setOnTouchListener { view, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                view.parent.requestDisallowInterceptTouchEvent(true)
+            }
+            val handled = detector.onTouchEvent(event)
+            if (
+                event.actionMasked == MotionEvent.ACTION_UP ||
+                event.actionMasked == MotionEvent.ACTION_CANCEL
+            ) {
+                view.parent.requestDisallowInterceptTouchEvent(false)
+            }
+            handled
+        }
+    }
+
+    private fun changeCalendarMonth(delta: Int) {
+        val travel = dp(28).toFloat() * if (delta > 0) -1 else 1
+        content.animate().cancel()
+        content.animate()
+            .alpha(0f)
+            .translationX(travel)
+            .setDuration(120)
+            .withEndAction {
+                calendarMonth = calendarMonth.plusMonths(delta.toLong())
+                selectedCalendarDate = null
+                renderQueue()
+                content.translationX = -travel
+                content.animate().alpha(1f).translationX(0f).setDuration(180).start()
+            }
+            .start()
     }
 
     private fun calendarCellParams(row: Int, column: Int, height: Int): GridLayout.LayoutParams =
@@ -282,35 +414,64 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { setMargins(dp(6), dp(4), dp(6), dp(12)) }
             val ready = post.status == ScheduleStatus.NEEDS_ACTION
-            addView(CardItemView(this@ScheduleActivity).apply {
+            val cardItem = CardItemView(this@ScheduleActivity).apply {
                 title = if (ready) getString(R.string.schedule_ready_now) else queueDateTitle(post.scheduledAt)
                 val body = post.thread.firstOrNull()?.text?.take(110)?.ifBlank {
                     getString(R.string.schedule_media_post)
                 } ?: getString(R.string.schedule_empty_post)
                 val mediaCount = post.thread.sumOf { it.media.size }
-                summary = if (mediaCount == 0) body else "$body\n" + if (mediaCount == 1) {
+                val mediaSummary = if (mediaCount == 0) body else "$body\n" + if (mediaCount == 1) {
                     getString(R.string.schedule_one_image_attached)
                 } else {
                     getString(R.string.schedule_images_attached, mediaCount)
+                }
+                summary = if (
+                    post.provider == ScheduleProvider.POSTPONE &&
+                    post.status == ScheduleStatus.SCHEDULED
+                ) {
+                    "$mediaSummary\n${getString(R.string.schedule_postpone_auto_summary)}"
+                } else {
+                    mediaSummary
                 }
                 getTitleView().maxLines = 1
                 getSummaryView().maxLines = 4
                 getEndImageView()?.apply {
                     setImageResource(OneUiIconR.drawable.ic_oui_edit_outline)
                     contentDescription = getString(R.string.schedule_edit)
-                    setOnClickListener { if (ready) renderChecklist(post) else openEditor(post) }
+                    setOnClickListener { openEditor(post) }
                 }
                 if (ready) {
                     icon = ContextCompat.getDrawable(context, R.drawable.schedule_ready_dot)
                     iconSize = dp(6)
                 }
-                setOnClickListener { if (ready) renderChecklist(post) else openEditor(post) }
+                setOnClickListener { openEditor(post) }
+            }
+            addView(cardItem)
+            if (ready) addView(actionRow().apply {
+                setPadding(dp(16), 0, dp(16), dp(14))
+                addView(actionButton(getString(R.string.schedule_post_now)) { postReady(post) })
+                addView(actionButton(getString(R.string.schedule_copy_text)) {
+                    showHandoff(XComposeIntents.copyText(
+                        this@ScheduleActivity,
+                        post.thread.firstOrNull()?.text.orEmpty(),
+                    ))
+                })
+                if (post.thread.any { it.media.isNotEmpty() }) {
+                    addView(actionButton(getString(R.string.schedule_download_media)) {
+                        downloadPostMedia(post)
+                    })
+                }
             })
             post.errorMessage?.takeIf(String::isNotBlank)?.let {
                 addView(metaText(getString(R.string.schedule_error_detail, it)).apply {
                     setTextColor(ContextCompat.getColor(context, R.color.metric_red))
                 })
             }
+            bindQueueCardGestures(
+                cardItem.findViewById(OneUiDesignR.id.cardview_container),
+                this,
+                post,
+            )
         }
 
         return FrameLayout(this).apply {
@@ -323,7 +484,6 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 setMargins(dp(6), dp(4), dp(6), dp(12))
             })
             addView(foreground)
-            bindQueueCardGestures(foreground, post)
         }
     }
 
@@ -338,48 +498,96 @@ class ScheduleActivity : FoldablePopOverActivity() {
         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
     }
 
-    private fun bindQueueCardGestures(card: View, post: ScheduledPost) {
+    private fun bindQueueCardGestures(gestureSurface: View, movingCard: View, post: ScheduledPost) {
         var downX = 0f
         var downY = 0f
-        var downAt = 0L
         var dragging = false
-        card.setOnTouchListener { view, event ->
+        var longPressed = false
+        val longPressAction = Runnable {
+            if (!dragging) {
+                longPressed = true
+                showQueueMenu(gestureSurface, post)
+            }
+        }
+        gestureSurface.setOnTouchListener { view, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = event.rawX
                     downY = event.rawY
-                    downAt = System.currentTimeMillis()
                     dragging = false
+                    longPressed = false
+                    view.postDelayed(longPressAction, 500)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - downX
                     if (!dragging && abs(dx) > dp(8) && abs(dx) > abs(event.rawY - downY)) {
                         dragging = true
+                        view.removeCallbacks(longPressAction)
                         view.parent.requestDisallowInterceptTouchEvent(true)
                     }
-                    if (dragging) view.translationX = dx.coerceIn(-dp(132).toFloat(), dp(132).toFloat())
+                    if (dragging) {
+                        movingCard.translationX = dx.coerceIn(-dp(132).toFloat(), dp(132).toFloat())
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    view.removeCallbacks(longPressAction)
                     val dx = event.rawX - downX
                     when {
-                        dragging && dx > dp(84) -> {
-                            view.animate().translationX(0f).setDuration(160).start()
+                        dragging && event.actionMasked == MotionEvent.ACTION_UP && dx > dp(84) -> {
+                            movingCard.animate().translationX(0f).setDuration(160).start()
                             duplicate(post)
                         }
-                        dragging && dx < -dp(84) -> {
-                            view.animate().translationX(0f).setDuration(160).start()
+                        dragging && event.actionMasked == MotionEvent.ACTION_UP && dx < -dp(84) -> {
+                            movingCard.animate().translationX(0f).setDuration(160).start()
                             deletePost(post)
                         }
-                        !dragging && System.currentTimeMillis() - downAt > 500 -> showQueueMenu(view, post)
-                        !dragging && post.status == ScheduleStatus.NEEDS_ACTION -> renderChecklist(post)
-                        !dragging -> openEditor(post)
-                        else -> view.animate().translationX(0f).setDuration(160).start()
+                        !dragging && !longPressed && event.actionMasked == MotionEvent.ACTION_UP -> view.performClick()
+                        else -> movingCard.animate().translationX(0f).setDuration(160).start()
                     }
                     true
                 }
                 else -> false
+            }
+        }
+    }
+
+    private fun postReady(post: ScheduledPost) {
+        if (post.thread.size > 1) {
+            renderChecklist(post)
+            return
+        }
+        showHandoff(XComposeIntents.openCompose(
+            this,
+            post.thread.firstOrNull()?.text.orEmpty(),
+        ))
+    }
+
+    private fun downloadPostMedia(post: ScheduledPost) {
+        val items = post.thread.filter { it.media.isNotEmpty() }
+        if (items.isEmpty()) return
+        setBusy(true)
+        AppExecutors.execute(
+            onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
+        ) {
+            val outcomes = items.map { ScheduleMediaExporter.downloadItem(this, it) }
+            val savedCount = outcomes.sumOf { it.savedCount }
+            val details = outcomes.mapNotNull { it.detail }.distinct().joinToString("\n").ifBlank { null }
+            val outcome = when {
+                savedCount > 0 -> ScheduleMediaExportOutcome(
+                    ScheduleMediaExportResult.SAVED,
+                    savedCount,
+                    details,
+                )
+                else -> ScheduleMediaExportOutcome(
+                    ScheduleMediaExportResult.FAILED,
+                    detail = details,
+                )
+            }
+            runOnUiThread {
+                setBusy(false)
+                if (!isFinishing && !isDestroyed) showExportOutcome(outcome)
             }
         }
     }
@@ -466,16 +674,25 @@ class ScheduleActivity : FoldablePopOverActivity() {
             .show()
     }
 
-    private fun openEditor(post: ScheduledPost?) {
-        startActivity(
-            Intent(this, ScheduleComposeActivity::class.java)
-                .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, requestedUsername())
-                .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, post?.id)
-        )
+    private fun openEditor(post: ScheduledPost?, date: LocalDate? = null) {
+        val intent = Intent(this, ScheduleComposeActivity::class.java)
+            .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, requestedUsername())
+            .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, post?.id)
+        if (post == null && date != null) {
+            val selectedTime = Calendar.getInstance().apply {
+                add(Calendar.HOUR_OF_DAY, 1)
+                set(date.year, date.monthValue - 1, date.dayOfMonth)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            intent.putExtra(ScheduleComposeActivity.EXTRA_SCHEDULED_AT, selectedTime.timeInMillis)
+        }
+        startActivity(intent)
     }
 
     private fun showQueueMode() {
         queueRoot.visibility = View.VISIBLE
+        switcherHost.visibility = View.VISIBLE
     }
 
     private fun runRemote(work: () -> ScheduleCoordinatorResult?) {
@@ -513,6 +730,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
 
     private fun renderChecklist(post: ScheduledPost) {
         showQueueMode()
+        switcherHost.visibility = View.GONE
         content.removeAllViews()
         content.addView(sectionTitle(getString(R.string.schedule_publish_checklist)))
         content.addView(actionButton(getString(R.string.schedule_back_to_queue)) { renderQueue() }.apply {

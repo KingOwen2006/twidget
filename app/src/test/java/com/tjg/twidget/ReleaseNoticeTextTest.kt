@@ -27,4 +27,21 @@ class ReleaseNoticeTextTest {
         assertFalse(ReleaseNoticesStore.hasUnseen("v1.1.0", "v1.1.0"))
         assertFalse(ReleaseNoticesStore.hasUnseen(null, "v1.0.0"))
     }
+
+    @Test
+    fun fullChangelogKeepsEverySectionAndBullet() {
+        val markdown = """
+            ### Added
+            - First feature
+            - Second feature
+
+            ### Fixed
+            - Important fix
+        """.trimIndent()
+
+        assertEquals(
+            "Added\n• First feature\n• Second feature\n\nFixed\n• Important fix",
+            ReleaseNoticeText.plainText(markdown),
+        )
+    }
 }

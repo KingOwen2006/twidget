@@ -5,7 +5,9 @@ import android.text.Spanned
 import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -78,9 +80,11 @@ internal class ScheduleComposeUi(
         val input = row.findViewById<EditText>(R.id.schedule_thread_input)
         val avatar = row.findViewById<ImageView>(R.id.schedule_thread_avatar)
         val connector = row.findViewById<View>(R.id.schedule_thread_connector)
+        val removeThread = row.findViewById<AppCompatImageButton>(R.id.schedule_thread_remove)
         val limitNotice = row.findViewById<TextView>(R.id.schedule_thread_limit_notice)
         val strip = row.findViewById<HorizontalScrollView>(R.id.schedule_thread_media_strip)
         val mediaContainer = row.findViewById<LinearLayout>(R.id.schedule_thread_media_container)
+        val media = activity.composeItemMedia(index)
 
         loadAvatar(avatar)
         avatar.visibility = if (index == 0) View.VISIBLE else View.INVISIBLE
@@ -91,6 +95,8 @@ internal class ScheduleComposeUi(
         }
         input.setText(activity.composeItemText(index))
         updateCharacterLimit(input, limitNotice)
+        updateRemoveThreadButton(index, input, removeThread, media.isEmpty())
+        removeThread.setOnClickListener { activity.onComposeRemoveThreadRequested(index) }
         input.setOnFocusChangeListener { _, focused ->
             if (focused) {
                 activeItem = index
@@ -112,17 +118,23 @@ internal class ScheduleComposeUi(
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 activity.composeUpdateItemText(index, s?.toString().orEmpty())
                 updateCharacterLimit(input, limitNotice)
+                updateRemoveThreadButton(index, input, removeThread, media.isEmpty())
                 refreshSubmitState()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
-        val media = activity.composeItemMedia(index)
         strip.visibility = if (media.isEmpty()) View.GONE else View.VISIBLE
+        bindHorizontalMediaScroll(strip)
         media.forEachIndexed { mediaIndex, source ->
             val preview = LayoutInflater.from(activity)
                 .inflate(R.layout.item_schedule_media_preview, mediaContainer, false)
             bindMediaPreview(preview.findViewById(R.id.schedule_media_preview_image), source)
+            preview.findViewById<AppCompatImageButton>(R.id.schedule_media_preview_remove).setOnClickListener {
+                activeItem = index
+                activity.composeRemoveMedia(index, mediaIndex)
+                refreshFromEditor()
+            }
             preview.setOnLongClickListener {
                 activeItem = index
                 AlertDialog.Builder(activity)
@@ -143,6 +155,41 @@ internal class ScheduleComposeUi(
             mediaContainer.addView(preview)
         }
         threadContainer.addView(row)
+    }
+
+    private fun updateRemoveThreadButton(
+        index: Int,
+        input: EditText,
+        button: AppCompatImageButton,
+        mediaEmpty: Boolean,
+    ) {
+        button.visibility = if (index > 0 && input.text.isNullOrBlank() && mediaEmpty) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+    }
+
+    private fun bindHorizontalMediaScroll(strip: HorizontalScrollView) {
+        val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
+        var downX = 0f
+        var downY = 0f
+        strip.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = kotlin.math.abs(event.x - downX)
+                    val dy = kotlin.math.abs(event.y - downY)
+                    if (dx > touchSlop && dx > dy) view.parent.requestDisallowInterceptTouchEvent(true)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    view.parent.requestDisallowInterceptTouchEvent(false)
+            }
+            false
+        }
     }
 
     private fun updateCharacterLimit(input: EditText, notice: TextView) {
@@ -177,7 +224,11 @@ internal class ScheduleComposeUi(
         when (source) {
             is LocalUriMedia -> {
                 image.scaleType = ImageView.ScaleType.CENTER_CROP
-                image.setImageURI(android.net.Uri.parse(source.uri))
+                runCatching { image.setImageURI(android.net.Uri.parse(source.uri)) }
+                    .onFailure {
+                        image.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                        image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
+                    }
             }
             is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
             is PostponeLibraryMedia -> {
