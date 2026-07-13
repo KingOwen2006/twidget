@@ -7,6 +7,8 @@ import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
@@ -21,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.GridLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -32,8 +35,15 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.text.DateFormat
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
 
@@ -48,6 +58,9 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private val postponeClient by lazy { PostponeClient(this) }
 
     private var selectedQueueStatus: ScheduleStatus? = null
+    private var selectedQueueView = ScheduleQueueView.LIST
+    private var calendarMonth = YearMonth.now()
+    private var selectedCalendarDate: LocalDate? = null
     private var editorPost: ScheduledPost? = null
     private var editorProvider = ScheduleProvider.LOCAL_REMINDER
     private var editorAccount = ""
@@ -142,12 +155,15 @@ class ScheduleActivity : FoldablePopOverActivity() {
         showQueueMode()
         content.removeAllViews()
         content.addView(sectionTitle(getString(R.string.schedule_queue_for, queueAccountLabel())))
+        addQueueViewFilters()
         addStatusFilters()
 
         val username = requestedUsername()
         val allPosts = if (username.isBlank()) store.list() else store.listForAccount(username)
         val posts = allPosts.filter { selectedQueueStatus == null || it.status == selectedQueueStatus }
-        if (posts.isEmpty()) {
+        if (selectedQueueView == ScheduleQueueView.CALENDAR) {
+            renderCalendar(posts)
+        } else if (posts.isEmpty()) {
             content.addView(emptyState())
         } else {
             posts.forEach { content.addView(queueCard(it)) }
@@ -160,6 +176,157 @@ class ScheduleActivity : FoldablePopOverActivity() {
             setOnClickListener { openEditor(null) }
         }
         TwidgetFonts.applyTo(content)
+    }
+
+    private fun addQueueViewFilters() {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+        }
+        listOf(
+            ScheduleQueueView.LIST to R.string.schedule_view_list,
+            ScheduleQueueView.CALENDAR to R.string.schedule_view_calendar,
+        ).forEach { (view, label) ->
+            row.addView(actionButton(getString(label), view == selectedQueueView) {
+                selectedQueueView = view
+                selectedCalendarDate = null
+                renderQueue()
+            })
+        }
+        content.addView(row)
+    }
+
+    private fun renderCalendar(posts: List<ScheduledPost>) {
+        val zoneId = ZoneId.systemDefault()
+        val monthPosts = ScheduleCalendar.postsInMonth(posts, calendarMonth, zoneId)
+        val counts = ScheduleCalendar.countByDate(posts, calendarMonth, zoneId)
+        content.addView(calendarHeader())
+        content.addView(calendarGrid(counts))
+
+        val selected = selectedCalendarDate?.takeIf { YearMonth.from(it) == calendarMonth }
+        if (selected != null) {
+            content.addView(sectionTitle(getString(
+                R.string.schedule_agenda_for,
+                selected.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())),
+            )))
+            val selectedPosts = ScheduleCalendar.postsOnDate(posts, selected, zoneId)
+            if (selectedPosts.isEmpty()) content.addView(calendarEmptyState())
+            else selectedPosts.forEach { content.addView(queueCard(it)) }
+        } else {
+            content.addView(sectionTitle(getString(
+                R.string.schedule_month_agenda,
+                calendarMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())),
+            )))
+            if (monthPosts.isEmpty()) {
+                content.addView(calendarEmptyState())
+            } else {
+                monthPosts.groupBy { ScheduleCalendar.dateFor(it, zoneId) }.forEach { (date, datedPosts) ->
+                    date?.let {
+                        content.addView(metaText(it.format(
+                            DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault()),
+                        )).apply { setPadding(dp(18), dp(10), dp(18), dp(6)) })
+                    }
+                    datedPosts.forEach { content.addView(queueCard(it)) }
+                }
+            }
+        }
+
+        val undated = posts.filter { it.scheduledAt == null }
+        if (undated.isNotEmpty()) {
+            content.addView(sectionTitle(getString(R.string.schedule_unscheduled_drafts)))
+            undated.forEach { content.addView(queueCard(it)) }
+        }
+    }
+
+    private fun calendarHeader(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(10), dp(8), dp(10), dp(8))
+        addView(actionButton("‹") {
+            calendarMonth = calendarMonth.minusMonths(1)
+            selectedCalendarDate = null
+            renderQueue()
+        }.apply { contentDescription = getString(R.string.schedule_previous_month) })
+        addView(TextView(this@ScheduleActivity).apply {
+            text = calendarMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+            gravity = Gravity.CENTER
+            textSize = 18f
+            typeface = TwidgetFonts.oneUiSans(context, 700)
+            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+        }, LinearLayout.LayoutParams(0, dp(48), 1f))
+        addView(actionButton("›") {
+            calendarMonth = calendarMonth.plusMonths(1)
+            selectedCalendarDate = null
+            renderQueue()
+        }.apply { contentDescription = getString(R.string.schedule_next_month) })
+    }
+
+    private fun calendarGrid(counts: Map<LocalDate, Int>): View = GridLayout(this).apply {
+        columnCount = 7
+        setPadding(dp(8), dp(4), dp(8), dp(12))
+        val firstDay = calendarMonth.atDay(1)
+        val leadingDays = (firstDay.dayOfWeek.value - DayOfWeek.MONDAY.value + 7) % 7
+        val today = LocalDate.now()
+
+        DayOfWeek.entries.forEachIndexed { column, day ->
+            addView(TextView(this@ScheduleActivity).apply {
+                text = day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+                gravity = Gravity.CENTER
+                textSize = 12f
+                typeface = TwidgetFonts.oneUiSans(context, 700)
+                setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
+            }, calendarCellParams(0, column, dp(28)))
+        }
+        repeat(calendarMonth.lengthOfMonth()) { offset ->
+            val date = calendarMonth.atDay(offset + 1)
+            val position = leadingDays + offset
+            val row = position / 7 + 1
+            val column = position % 7
+            val count = counts[date] ?: 0
+            addView(TextView(this@ScheduleActivity).apply {
+                text = if (count > 0) "${date.dayOfMonth}\n$count" else date.dayOfMonth.toString()
+                gravity = Gravity.CENTER
+                textSize = if (count > 0) 13f else 14f
+                typeface = Typeface.create("sec", if (date == today || date == selectedCalendarDate) Typeface.BOLD else Typeface.NORMAL)
+                setTextColor(ContextCompat.getColor(
+                    context,
+                    if (date == selectedCalendarDate) R.color.oneui_card_bg else R.color.oneui_text_primary,
+                ))
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(16).toFloat()
+                    when {
+                        date == selectedCalendarDate -> setColor(ContextCompat.getColor(context, R.color.oneui_accent))
+                        count > 0 -> setColor(ContextCompat.getColor(context, R.color.oneui_accent_translucent))
+                        else -> setColor(android.graphics.Color.TRANSPARENT)
+                    }
+                    if (date == today && date != selectedCalendarDate) {
+                        setStroke(dp(1), ContextCompat.getColor(context, R.color.oneui_accent))
+                    }
+                }
+                isClickable = true
+                isFocusable = true
+                contentDescription = getString(R.string.schedule_day_description, date.toString(), count)
+                setOnClickListener {
+                    selectedCalendarDate = if (selectedCalendarDate == date) null else date
+                    renderQueue()
+                }
+            }, calendarCellParams(row, column, dp(52)))
+        }
+    }
+
+    private fun calendarCellParams(row: Int, column: Int, height: Int): GridLayout.LayoutParams =
+        GridLayout.LayoutParams(
+            GridLayout.spec(row),
+            GridLayout.spec(column, 1, 1f),
+        ).apply {
+            width = 0
+            this.height = height
+            setMargins(dp(2), dp(2), dp(2), dp(2))
+        }
+
+    private fun calendarEmptyState(): View = card().apply {
+        gravity = Gravity.CENTER
+        addView(metaText(getString(R.string.schedule_calendar_empty)).apply { gravity = Gravity.CENTER })
     }
 
     private fun addStatusFilters() {
@@ -941,6 +1108,11 @@ class ScheduleActivity : FoldablePopOverActivity() {
         val value = this[first]
         this[first] = this[second]
         this[second] = value
+    }
+
+    private enum class ScheduleQueueView {
+        LIST,
+        CALENDAR,
     }
 
     private data class EditorItem(

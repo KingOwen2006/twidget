@@ -54,7 +54,8 @@ class MetricChartView @JvmOverloads constructor(
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
     private val numberFormat = NumberFormat.getIntegerInstance(Locale.US)
-    private var samples: List<HistorySample> = emptyList()
+    private var labels: List<String> = emptyList()
+    private var estimated: List<Boolean> = emptyList()
     private var values: List<Long> = emptyList()
     private var barGradient: LinearGradient? = null
     private var activeIndex = -1
@@ -78,10 +79,22 @@ class MetricChartView @JvmOverloads constructor(
     }
 
     fun setData(samples: List<HistorySample>, selector: (HistorySample) -> Long) {
-        this.samples = samples
+        labels = samples.map(HistorySample::dayLabel)
+        estimated = samples.map(HistorySample::estimated)
         values = samples.map(selector)
         barHitBounds.clear()
-        repeat(samples.size) { barHitBounds += RectF() }
+        repeat(labels.size) { barHitBounds += RectF() }
+        removeCallbacks(hideTooltipRunnable)
+        activeIndex = -1
+        invalidate()
+    }
+
+    fun setSeries(points: List<ImportedChartPoint>) {
+        labels = points.map(ImportedChartPoint::label)
+        estimated = List(points.size) { false }
+        values = points.map(ImportedChartPoint::value)
+        barHitBounds.clear()
+        repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
         activeIndex = -1
         invalidate()
@@ -104,7 +117,7 @@ class MetricChartView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (samples.isEmpty()) return
+        if (labels.isEmpty()) return
 
         val density = resources.displayMetrics.density
         val labelInset = 18f * density
@@ -117,9 +130,9 @@ class MetricChartView @JvmOverloads constructor(
         val widthAvailable = width - left - right
         val (scaleMin, scaleMax) = MetricChartScale.axisBounds(values)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
-        val labels = MetricChartScale.axisLabels(scaleMin, scaleMax)
-        val barSlot = widthAvailable / samples.size
-        val barWidth = (barSlot * 0.56f).coerceIn(18f * density, 32f * density)
+        val axisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
+        val barSlot = widthAvailable / labels.size
+        val barWidth = (barSlot * 0.56f).coerceIn(3f * density, 32f * density)
         fun heightFor(value: Long): Float {
             val normalized = (value - scaleMin).coerceAtLeast(0)
             return if (value <= 0) {
@@ -130,18 +143,18 @@ class MetricChartView @JvmOverloads constructor(
         }
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
-        val maxLabelWidth = samples.maxOf { labelPaint.measureText(it.dayLabel) } + 6f * density
+        val maxLabelWidth = labels.maxOf { labelPaint.measureText(it) } + 6f * density
         val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
 
-        labels.forEachIndexed { index, label ->
-            val y = top + chartHeight * index / (labels.size - 1).coerceAtLeast(1)
+        axisLabels.forEachIndexed { index, label ->
+            val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
             canvas.drawLine(left, y, width - right, y, gridPaint)
             canvas.drawText(label, labelInset, y + 4f * density, labelPaint)
         }
 
         barPaint.shader = barGradient
 
-        samples.forEachIndexed { index, sample ->
+        labels.forEachIndexed { index, label ->
             val value = values[index]
             val barHeight = heightFor(value)
             val x = left + index * barSlot + (barSlot - barWidth) / 2f
@@ -149,14 +162,14 @@ class MetricChartView @JvmOverloads constructor(
             barHitBounds[index].set(left + index * barSlot, top, left + (index + 1) * barSlot, chartBottom)
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
-            barPaint.alpha = if (sample.estimated) 80 else 255
+            barPaint.alpha = if (estimated[index]) 80 else 255
             canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
             barPaint.alpha = 255
-            if ((samples.lastIndex - index) % labelStep == 0) {
-                val labelWidth = labelPaint.measureText(sample.dayLabel)
+            if ((labels.lastIndex - index) % labelStep == 0) {
+                val labelWidth = labelPaint.measureText(label)
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-                canvas.drawText(sample.dayLabel, labelX, height - 7f * density, labelPaint)
+                canvas.drawText(label, labelX, height - 7f * density, labelPaint)
             }
 
         }
@@ -164,13 +177,13 @@ class MetricChartView @JvmOverloads constructor(
 
         // Tooltips are an overlay. Drawing one inside the bar loop lets later
         // bars paint over it, which clips the bubble on selected early days.
-        if (activeIndex in samples.indices) {
-            val sample = samples[activeIndex]
+        if (activeIndex in labels.indices) {
+            val label = labels[activeIndex]
             val value = values[activeIndex]
             val x = left + activeIndex * barSlot + (barSlot - barWidth) / 2f
             drawTooltip(
                 canvas = canvas,
-                label = "${sample.dayLabel}  ${if (sample.estimated) "~" else ""}${numberFormat.format(value)}",
+                label = "$label  ${if (estimated[activeIndex]) "~" else ""}${numberFormat.format(value)}",
                 anchorX = x + barWidth / 2f,
                 anchorY = chartBottom - heightFor(value),
                 chartLeft = left,

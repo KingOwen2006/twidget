@@ -17,6 +17,15 @@ data class AppRelease(
     val prerelease: Boolean,
 )
 
+data class ReleaseNotice(
+    val tag: String,
+    val title: String,
+    val body: String,
+    val url: String,
+    val prerelease: Boolean,
+    val publishedAt: String,
+)
+
 data class AppVersion(
     val major: Int,
     val minor: Int,
@@ -83,6 +92,37 @@ object AppUpdateManager {
         return eligibleReleases(parseReleases(releases), channel)
             .filter { it.version > current }
             .maxByOrNull(AppRelease::version)
+    }
+
+    fun fetchReleaseNotices(): List<ReleaseNotice> {
+        val connection = request(RELEASES_URL)
+        val releases = try {
+            if (connection.responseCode !in 200..299) {
+                error("GitHub releases request failed with HTTP ${connection.responseCode}")
+            }
+            JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+        } finally {
+            connection.disconnect()
+        }
+        return parseReleaseNotices(releases)
+    }
+
+    internal fun parseReleaseNotices(releases: JSONArray): List<ReleaseNotice> = buildList {
+        for (index in 0 until releases.length()) {
+            val release = releases.optJSONObject(index) ?: continue
+            if (release.optBoolean("draft")) continue
+            val tag = release.optString("tag_name").trim()
+            val url = release.optString("html_url").trim()
+            if (tag.isBlank() || !url.startsWith(RELEASE_PAGE_PREFIX)) continue
+            add(ReleaseNotice(
+                tag = tag,
+                title = release.optString("name").trim().ifBlank { tag },
+                body = release.optString("body").trim(),
+                url = url,
+                prerelease = release.optBoolean("prerelease"),
+                publishedAt = release.optString("published_at").trim(),
+            ))
+        }
     }
 
     internal fun eligibleReleases(
@@ -160,4 +200,7 @@ object AppUpdateManager {
             setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             setRequestProperty("User-Agent", USER_AGENT)
         }
+
+    private const val RELEASE_PAGE_PREFIX =
+        "https://github.com/thatjoshguy67/twidget/releases/"
 }

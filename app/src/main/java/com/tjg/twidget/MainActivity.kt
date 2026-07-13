@@ -520,7 +520,19 @@ class MainActivity : EdgeToEdgeActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
+            val opensImportedAnalytics = card in IMPORTED_ANALYTICS_CARDS
+            background = AppCompatResources.getDrawable(
+                this@MainActivity,
+                if (opensImportedAnalytics) R.drawable.metric_card_clickable_bg else R.drawable.metric_card_bg,
+            )
+            isClickable = opensImportedAnalytics
+            isFocusable = opensImportedAnalytics
+            if (opensImportedAnalytics) {
+                contentDescription = getString(R.string.analytics_open_details, spec.label)
+                setOnClickListener {
+                    if (!editMode) openAnalyticsDetails(selectedAccount)
+                }
+            }
 
             val labelRow = LinearLayout(this@MainActivity).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -1228,6 +1240,33 @@ class MainActivity : EdgeToEdgeActivity() {
             setIcon(OneUiIconR.drawable.ic_oui_add)
             contentDescription = getString(R.string.add_account)
         }
+        menu.add(
+            DRAWER_GROUP_ACTIONS,
+            DRAWER_ITEM_SCHEDULE,
+            accounts.size + 1,
+            getString(R.string.schedule_title),
+        ).apply {
+            setIcon(R.drawable.ic_schedule_time)
+            contentDescription = getString(R.string.schedule_title)
+        }
+        menu.add(
+            DRAWER_GROUP_ACTIONS,
+            DRAWER_ITEM_ANALYTICS,
+            accounts.size + 2,
+            getString(R.string.analytics_details_title),
+        ).apply {
+            setIcon(R.drawable.ic_import_analytics)
+            contentDescription = getString(R.string.analytics_details_title)
+        }
+        menu.add(
+            DRAWER_GROUP_ACTIONS,
+            DRAWER_ITEM_NOTICES,
+            accounts.size + 3,
+            getString(R.string.notices_title),
+        ).apply {
+            setIcon(R.drawable.ic_github_24)
+            contentDescription = getString(R.string.notices_title)
+        }
         drawerNav.refreshDrawerMenu()
         drawerNav.post {
             applyDrawerIconTints(drawerNav)
@@ -1285,9 +1324,16 @@ class MainActivity : EdgeToEdgeActivity() {
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
                 ?.imageTintList = if (itemId in drawerAvatarItemIds) null else normalTint
         }
-        drawerNav.findViewById<View>(DRAWER_ITEM_ADD_ACCOUNT)
-            ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
-            ?.imageTintList = normalTint
+        listOf(
+            DRAWER_ITEM_ADD_ACCOUNT,
+            DRAWER_ITEM_SCHEDULE,
+            DRAWER_ITEM_ANALYTICS,
+            DRAWER_ITEM_NOTICES,
+        ).forEach { itemId ->
+            drawerNav.findViewById<View>(itemId)
+                ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
+                ?.imageTintList = normalTint
+        }
     }
 
     private fun handleDrawerItemSelected(item: MenuItem): Boolean {
@@ -1303,6 +1349,21 @@ class MainActivity : EdgeToEdgeActivity() {
         if (item.itemId == DRAWER_ITEM_ADD_ACCOUNT) {
             closeDrawerOnCompactScreens()
             addAccount()
+            return true
+        }
+        if (item.itemId == DRAWER_ITEM_SCHEDULE) {
+            closeDrawerOnCompactScreens()
+            openSchedule(selectedAccount)
+            return true
+        }
+        if (item.itemId == DRAWER_ITEM_ANALYTICS) {
+            closeDrawerOnCompactScreens()
+            openAnalyticsDetails(selectedAccount)
+            return true
+        }
+        if (item.itemId == DRAWER_ITEM_NOTICES) {
+            closeDrawerOnCompactScreens()
+            startLeftSidePopOverActivity(Intent(this, NoticesActivity::class.java))
             return true
         }
         return false
@@ -1370,11 +1431,15 @@ class MainActivity : EdgeToEdgeActivity() {
 
     private fun setupScheduleAction() {
         findViewById<View>(R.id.schedule_fab).setOnClickListener {
-            startLeftSidePopOverActivity(
-                Intent(this, ScheduleActivity::class.java)
-                    .putExtra(ScheduleActivity.EXTRA_USERNAME, selectedAccount)
-            )
+            openSchedule(selectedAccount)
         }
+    }
+
+    private fun openSchedule(username: String) {
+        startLeftSidePopOverActivity(
+            Intent(this, ScheduleActivity::class.java)
+                .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
+        )
     }
 
     private fun handlePullRefresh() {
@@ -1440,6 +1505,13 @@ class MainActivity : EdgeToEdgeActivity() {
         startActivity(
             Intent(this, AnalyticsImportActivity::class.java)
                 .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username)
+        )
+    }
+
+    private fun openAnalyticsDetails(username: String) {
+        startLeftSidePopOverActivity(
+            Intent(this, AnalyticsDetailsActivity::class.java)
+                .putExtra(AnalyticsDetailsActivity.EXTRA_USERNAME, username)
         )
     }
 
@@ -1539,8 +1611,17 @@ class MainActivity : EdgeToEdgeActivity() {
         private const val DRAWER_GROUP_ACTIONS = 2
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
+        private const val DRAWER_ITEM_SCHEDULE = 20_001
+        private const val DRAWER_ITEM_ANALYTICS = 20_002
+        private const val DRAWER_ITEM_NOTICES = 20_003
         private const val DASHBOARD_GRID_COLUMNS = 2
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
+        private val IMPORTED_ANALYTICS_CARDS = setOf(
+            DashboardCardType.X_IMPRESSIONS,
+            DashboardCardType.X_ENGAGEMENTS,
+            DashboardCardType.X_PROFILE_VISITS,
+            DashboardCardType.X_LIKES_RECEIVED,
+        )
     }
 }

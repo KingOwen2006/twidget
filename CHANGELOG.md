@@ -2,6 +2,18 @@
 
 All notable changes to Twidget are documented here.
 
+## Unreleased
+
+### Added
+
+- Detailed CSV analytics with 7-day, 30-day, 90-day, and one-year ranges, selectable metrics, summary cards, and gap-preserving charts.
+- A calendar view for scheduled posts with month navigation, daily post counts, selected-day agendas, and separate undated drafts.
+- An in-app Notices feed backed by GitHub Releases, with prerelease labels, offline caching, and links to the full release notes.
+
+### Changed
+
+- Added Schedule, Analytics, and Notices as first-class navigation drawer destinations.
+
 ## [1.0.0] - 2026-07-10
 
 First public release of Twidget, an X/Twitter follower dashboard and Samsung One UI widget app. Rebuilt from the One UI blur widget demo into a follower tracker.
