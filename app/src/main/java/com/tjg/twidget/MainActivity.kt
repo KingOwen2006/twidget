@@ -225,6 +225,7 @@ class MainActivity : EdgeToEdgeActivity() {
         val history = TwidgetStore.rangedHistory(this, account, HistoryRange.WEEK)
         val chartHistory = TwidgetStore.chartHistory(this, account, HistoryRange.WEEK)
         importedAnalytics = ImportedAnalyticsStore.recent(this, account)
+        bindPrivateAccountNotice(page, stats)
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
@@ -497,6 +498,11 @@ class MainActivity : EdgeToEdgeActivity() {
         } else {
             notice.visibility = View.GONE
         }
+    }
+
+    private fun bindPrivateAccountNotice(page: View, stats: ProfileStats) {
+        page.findViewById<TextView>(R.id.private_account_notice)?.visibility =
+            if (stats.isPrivate == true) View.VISIBLE else View.GONE
     }
 
     // Net change across the whole visible range (last bucket minus first).

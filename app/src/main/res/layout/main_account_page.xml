@@ -21,6 +21,19 @@
             android:paddingBottom="96dp">
 
                 <TextView
+                    android:id="@+id/private_account_notice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="6dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="10dp"
+                    android:text="@string/private_account_notice"
+                    android:textColor="@color/oneui_text_secondary"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/history_notice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
