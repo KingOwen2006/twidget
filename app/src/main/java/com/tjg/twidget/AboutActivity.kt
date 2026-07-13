@@ -27,6 +27,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import dev.oneuiproject.oneui.widget.CardItemView
@@ -44,11 +45,7 @@ class AboutActivity : FoldablePopOverActivity() {
     private var waitingForInstallPermission = false
 
     private val updateChannel: UpdateChannel
-        get() = if (getPreferences(MODE_PRIVATE).getBoolean(PREF_BETA_RELEASES, false)) {
-            UpdateChannel.BETA
-        } else {
-            UpdateChannel.STABLE
-        }
+        get() = savedUpdateChannel(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,8 +56,10 @@ class AboutActivity : FoldablePopOverActivity() {
         setupVersion()
         setupHeaderIconBounce()
         setupAdaptiveLayout()
+        setupResponsiveHeroHeight()
         setupCollapsingContent()
         setupCreditAvatars()
+        setupRefresh()
         setupUpdates()
 
         findViewById<View>(R.id.about_tjg_credit).setOnClickListener {
@@ -96,9 +95,18 @@ class AboutActivity : FoldablePopOverActivity() {
         menu.add(MENU_UPDATE_CHANNEL, MENU_BETA, 2, R.string.update_channel_beta)
             .setCheckable(true)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        if (AppUpdateManager.isDebugBuild(appVersionName())) {
+            menu.add(MENU_UPDATE_CHANNEL, MENU_DEBUG, 2, R.string.update_channel_debug)
+                .setCheckable(true)
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        }
         menu.setGroupCheckable(MENU_UPDATE_CHANNEL, true, true)
-        menu.findItem(if (updateChannel == UpdateChannel.BETA) MENU_BETA else MENU_STABLE)
-            .isChecked = true
+        val selectedItem = when (updateChannel) {
+            UpdateChannel.STABLE -> MENU_STABLE
+            UpdateChannel.BETA -> MENU_BETA
+            UpdateChannel.DEBUG -> MENU_DEBUG
+        }
+        menu.findItem(selectedItem)?.isChecked = true
         return true
     }
 
@@ -120,10 +128,17 @@ class AboutActivity : FoldablePopOverActivity() {
             )
             return true
         }
-        if (item.itemId == MENU_STABLE || item.itemId == MENU_BETA) {
-            val channel = if (item.itemId == MENU_BETA) UpdateChannel.BETA else UpdateChannel.STABLE
+        if (item.itemId == MENU_STABLE || item.itemId == MENU_BETA ||
+            (item.itemId == MENU_DEBUG && AppUpdateManager.isDebugBuild(appVersionName()))
+        ) {
+            val channel = when (item.itemId) {
+                MENU_BETA -> UpdateChannel.BETA
+                MENU_DEBUG -> UpdateChannel.DEBUG
+                else -> UpdateChannel.STABLE
+            }
             getPreferences(MODE_PRIVATE).edit()
-                .putBoolean(PREF_BETA_RELEASES, channel == UpdateChannel.BETA)
+                .putString(PREF_UPDATE_CHANNEL, channel.name)
+                .remove(PREF_BETA_RELEASES)
                 .apply()
             item.isChecked = true
             checkForUpdates(channel)
@@ -234,9 +249,26 @@ class AboutActivity : FoldablePopOverActivity() {
             AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
             setOf(
                 findViewById(R.id.about_app_bar),
-                findViewById(R.id.about_scroll),
+                findViewById(R.id.about_refresh),
             ),
         )
+    }
+
+    private fun setupRefresh() {
+        val appBar = findViewById<AppBarLayout>(R.id.about_app_bar)
+        findViewById<SwipeRefreshLayout>(R.id.about_refresh).apply {
+            setOnChildScrollUpCallback { _, child ->
+                appBar.y < 0f || child?.canScrollVertically(-1) == true
+            }
+            setOnRefreshListener { checkForUpdates(updateChannel) }
+        }
+    }
+
+    private fun setupResponsiveHeroHeight() {
+        if (resources.configuration.smallestScreenWidthDp >= LARGE_SCREEN_MIN_WIDTH_DP) {
+            findViewById<AppBarLayout>(R.id.about_app_bar)
+                .seslSetCustomHeightProportion(true, LARGE_SCREEN_HERO_HEIGHT_PROPORTION)
+        }
     }
 
     // Seven taps on the version number unlock the hidden debug menu in
@@ -280,11 +312,18 @@ class AboutActivity : FoldablePopOverActivity() {
             val release = fakeRelease()
             availableRelease = release
             showUpdateAvailable(release)
+            finishPullRefresh()
             return
         }
         showUpdateChecking()
         AppExecutors.execute(
-            onRejected = { runOnUiThread { if (generation == updateCheckGeneration) hideUpdateUi() } },
+            onRejected = {
+                runOnUiThread {
+                    if (generation != updateCheckGeneration) return@runOnUiThread
+                    hideUpdateUi()
+                    finishPullRefresh()
+                }
+            },
         ) {
             val result = runCatching {
                 AppUpdateManager.findUpdate(appVersionName(), channel)
@@ -297,8 +336,13 @@ class AboutActivity : FoldablePopOverActivity() {
                 val release = result.getOrNull()
                 availableRelease = release
                 if (release == null) hideUpdateUi() else showUpdateAvailable(release)
+                finishPullRefresh()
             }
         }
+    }
+
+    private fun finishPullRefresh() {
+        findViewById<SwipeRefreshLayout>(R.id.about_refresh).isRefreshing = false
     }
 
     // Debug aid: pretend the next minor version has been published so the
@@ -488,14 +532,36 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     companion object {
-        internal fun savedUpdateChannel(context: Context): UpdateChannel =
-            if (context.getSharedPreferences("AboutActivity", MODE_PRIVATE)
-                    .getBoolean(PREF_BETA_RELEASES, false)
-            ) {
-                UpdateChannel.BETA
-            } else {
-                UpdateChannel.STABLE
+        internal fun savedUpdateChannel(context: Context): UpdateChannel {
+            val preferences = context.getSharedPreferences("AboutActivity", MODE_PRIVATE)
+            val installedVersion = context.packageManager
+                .getPackageInfo(context.packageName, 0)
+                .versionName
+                .orEmpty()
+            val defaultChannel = AppUpdateManager.defaultUpdateChannel(installedVersion)
+            preferences.getString(PREF_UPDATE_CHANNEL, null)
+                ?.let { saved -> runCatching { UpdateChannel.valueOf(saved) }.getOrNull() }
+                ?.let { saved ->
+                    return if (saved == UpdateChannel.DEBUG &&
+                        !AppUpdateManager.isDebugBuild(installedVersion)
+                    ) {
+                        defaultChannel
+                    } else {
+                        saved
+                    }
+                }
+            if (preferences.contains(PREF_BETA_RELEASES)) {
+                return if (preferences.getBoolean(PREF_BETA_RELEASES, false)) {
+                    UpdateChannel.BETA
+                } else {
+                    UpdateChannel.STABLE
+                }
             }
+            return defaultChannel
+        }
+
+        private const val LARGE_SCREEN_MIN_WIDTH_DP = 600
+        private const val LARGE_SCREEN_HERO_HEIGHT_PROPORTION = 0.58f
 
         private const val DEBUG_UNLOCK_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_TAPS = 7
@@ -503,10 +569,12 @@ class AboutActivity : FoldablePopOverActivity() {
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
         private const val PREF_BETA_RELEASES = "beta_releases"
+        private const val PREF_UPDATE_CHANNEL = "update_channel"
         private const val MENU_APP_INFO = 1
         private const val MENU_UPDATE_CHANNEL = 2
         private const val MENU_STABLE = 3
         private const val MENU_BETA = 4
         private const val MENU_GITHUB = 5
+        private const val MENU_DEBUG = 6
     }
 }

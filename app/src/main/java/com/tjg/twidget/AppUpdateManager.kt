@@ -8,6 +8,7 @@ import java.net.URL
 enum class UpdateChannel {
     STABLE,
     BETA,
+    DEBUG,
 }
 
 data class AppRelease(
@@ -83,10 +84,14 @@ object AppUpdateManager {
     private const val MAX_APK_BYTES = 250L * 1024L * 1024L
 
     fun findUpdate(installedVersion: String, channel: UpdateChannel): AppRelease? {
+        if (channel == UpdateChannel.DEBUG) return findDebugUpdate(installedVersion)
         return checkReleases(installedVersion, channel).update
     }
 
     fun checkReleases(installedVersion: String, channel: UpdateChannel): AppReleaseCheck {
+        if (channel == UpdateChannel.DEBUG) {
+            return AppReleaseCheck(findDebugUpdate(installedVersion), emptyList())
+        }
         val connection = request(RELEASES_URL)
         val releases = try {
             if (connection.responseCode !in 200..299) {
@@ -119,6 +124,7 @@ object AppUpdateManager {
             val release = releases.optJSONObject(index) ?: continue
             if (release.optBoolean("draft")) continue
             val tag = release.optString("tag_name").trim()
+            if (tag == DEBUG_RELEASE_TAG) continue
             val url = release.optString("html_url").trim()
             if (tag.isBlank() || !url.startsWith(RELEASE_PAGE_PREFIX)) continue
             add(ReleaseNotice(
@@ -135,7 +141,14 @@ object AppUpdateManager {
     internal fun eligibleReleases(
         releases: List<AppRelease>,
         channel: UpdateChannel,
-    ): List<AppRelease> = releases.filter { channel == UpdateChannel.BETA || !it.prerelease }
+    ): List<AppRelease> = releases.filter { release ->
+        val isDebug = release.version.prereleaseLabel.equals("debug", ignoreCase = true)
+        when (channel) {
+            UpdateChannel.STABLE -> !release.prerelease && !isDebug
+            UpdateChannel.BETA -> !isDebug
+            UpdateChannel.DEBUG -> isDebug
+        }
+    }
 
     internal fun newestEligibleUpdate(
         installedVersion: String,
@@ -144,8 +157,29 @@ object AppUpdateManager {
     ): AppRelease? {
         val current = AppVersion.parse(installedVersion) ?: return null
         return eligibleReleases(releases, channel)
-            .filter { release -> release.version > current }
+            .filter { release -> isNewerThanInstalled(current, release.version) }
             .maxByOrNull(AppRelease::version)
+    }
+
+    internal fun defaultUpdateChannel(installedVersion: String): UpdateChannel =
+        when (AppVersion.parse(installedVersion)?.prereleaseLabel?.lowercase()) {
+            "debug" -> UpdateChannel.DEBUG
+            "beta" -> UpdateChannel.BETA
+            else -> UpdateChannel.STABLE
+        }
+
+    internal fun isDebugBuild(installedVersion: String): Boolean =
+        AppVersion.parse(installedVersion)?.prereleaseLabel.equals("debug", ignoreCase = true)
+
+    private fun isNewerThanInstalled(current: AppVersion, candidate: AppVersion): Boolean {
+        val sameBaseVersion = candidate.major == current.major &&
+            candidate.minor == current.minor &&
+            candidate.patch == current.patch
+        val publishedBuildSupersedesDebug =
+            current.prereleaseLabel.equals("debug", ignoreCase = true) &&
+                !candidate.prereleaseLabel.equals("debug", ignoreCase = true) &&
+                sameBaseVersion
+        return publishedBuildSupersedesDebug || candidate > current
     }
 
     private fun parseReleases(releases: JSONArray): List<AppRelease> {
@@ -171,6 +205,21 @@ object AppUpdateManager {
                 }
             }
         }
+    }
+
+    private fun findDebugUpdate(installedVersion: String): AppRelease? {
+        val connection = request(DEBUG_VERSION_URL)
+        val version = try {
+            if (connection.responseCode !in 200..299) {
+                error("Debug version request failed with HTTP ${connection.responseCode}")
+            }
+            connection.inputStream.bufferedReader().use { AppVersion.parse(it.readText().trim()) }
+                ?: error("Debug version metadata is invalid")
+        } finally {
+            connection.disconnect()
+        }
+        val release = AppRelease(version, DEBUG_ASSET_NAME, DEBUG_APK_URL, prerelease = true)
+        return newestEligibleUpdate(installedVersion, listOf(release), UpdateChannel.DEBUG)
     }
 
     fun download(release: AppRelease, destinationDirectory: File): File {
@@ -221,4 +270,10 @@ object AppUpdateManager {
 
     private const val RELEASE_PAGE_PREFIX =
         "https://github.com/thatjoshguy67/twidget/releases/"
+    private const val DEBUG_RELEASE_TAG = "twidget-debug-latest"
+    private const val DEBUG_ASSET_NAME = "twidget-debug-latest.apk"
+    private const val DEBUG_APK_URL =
+        "https://github.com/thatjoshguy67/twidget/releases/download/$DEBUG_RELEASE_TAG/$DEBUG_ASSET_NAME"
+    private const val DEBUG_VERSION_URL =
+        "https://github.com/thatjoshguy67/twidget/releases/download/$DEBUG_RELEASE_TAG/twidget-debug-latest.version"
 }

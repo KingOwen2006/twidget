@@ -164,7 +164,9 @@ class MainActivity : EdgeToEdgeActivity() {
             }
             result.onSuccess { check ->
                 TwidgetStore.setUpdateAvailable(appContext, check.update != null)
-                ReleaseNoticesStore.save(appContext, check.notices)
+                // The debug channel uses a quota-free release sidecar and does
+                // not refresh notices through the rate-limited GitHub API.
+                if (check.notices.isNotEmpty()) ReleaseNoticesStore.save(appContext, check.notices)
             }
             postUiIfCurrent(lifecycleToken) {
                 updateSettingsBadge()

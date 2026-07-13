@@ -4,6 +4,16 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added pull-to-refresh on the About page to immediately recheck the selected update channel.
+- Debug builds now expose a debug-only update channel backed by the latest successful, production-signed CI build, using public sidecar metadata that does not consume the GitHub API quota.
+
+### Fixed
+
+- Prevented the expanded About-page update control from being clipped on tablets, foldables, and other large-screen layouts.
+- Debug builds can now move to beta or stable builds of the same base version, so testers are not stranded on older builds.
+
 ## [1.1.0-beta.1] - 2026-07-13
 
 First beta of Twidget 1.1, focused on scheduled publishing, richer analytics, release notices, and more reliable widgets across launchers.

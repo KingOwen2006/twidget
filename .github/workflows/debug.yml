@@ -40,6 +40,8 @@ jobs:
     # would run untrusted contributor code with repository secrets.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -124,3 +126,39 @@ jobs:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+
+  publish-debug:
+    name: Publish rolling debug build
+    if: github.event_name != 'pull_request'
+    needs: [bridge, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: twidget-v${{ needs.build.outputs.version }}
+          path: debug-release
+
+      - name: Publish latest successful debug build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          TAG=twidget-debug-latest
+          APK=debug-release/twidget-debug-latest.apk
+          VERSION_FILE=debug-release/twidget-debug-latest.version
+          mv debug-release/app-debug.apk "$APK"
+          printf '%s\n' "$VERSION" > "$VERSION_FILE"
+          NOTES="Production-signed APK from successful Debug Build run $GITHUB_RUN_ID ($GITHUB_SHA)."
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" "$VERSION_FILE" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --prerelease --title "$VERSION" --notes "$NOTES" \
+              --repo "$GITHUB_REPOSITORY"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+          else
+            gh release create "$TAG" "$APK" "$VERSION_FILE" --prerelease --target "$GITHUB_SHA" \
+              --title "$VERSION" --notes "$NOTES" --repo "$GITHUB_REPOSITORY"
+          fi

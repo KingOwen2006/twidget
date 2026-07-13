@@ -269,6 +269,7 @@
     <string name="checking_for_updates">Checking for updates</string>
     <string name="update_channel_stable">Stable releases</string>
     <string name="update_channel_beta">Beta releases</string>
+    <string name="update_channel_debug">Debug builds</string>
     <string name="update_download_failed">Couldn\'t download the update.</string>
     <string name="update_install_permission">Allow Twidget to install updates, then return to continue.</string>
     <string name="update_invalid_apk">The downloaded update isn\'t a valid Twidget package.</string>

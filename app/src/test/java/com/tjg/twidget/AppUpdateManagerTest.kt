@@ -37,6 +37,20 @@ class AppUpdateManagerTest {
     }
 
     @Test
+    fun debugChannelOnlyIncludesDebugBuilds() {
+        val releases = listOf(
+            AppRelease(AppVersion.parse("1.1.0-debug.31")!!, "debug.apk", "https://example.com/debug.apk", true),
+            AppRelease(AppVersion.parse("1.1.0-beta.1")!!, "beta.apk", "https://example.com/beta.apk", true),
+            AppRelease(AppVersion.parse("1.1.0")!!, "stable.apk", "https://example.com/stable.apk", false),
+        )
+
+        val versions = AppUpdateManager.eligibleReleases(releases, UpdateChannel.DEBUG)
+            .map { it.version.toString() }
+
+        assertEquals(listOf("1.1.0-debug.31"), versions)
+    }
+
+    @Test
     fun betaChannelOffersNew110BetaToPreviousPublicBeta() {
         val expected = AppRelease(
             AppVersion.parse("1.1.0-beta.1")!!,
@@ -88,5 +102,48 @@ class AppUpdateManagerTest {
         )
 
         assertEquals(null, update)
+    }
+
+    @Test
+    fun debugBuildOffersPublishedBetaOfSameBaseVersion() {
+        val beta = AppRelease(
+            AppVersion.parse("1.1.0-beta.1")!!,
+            "twidget-v1.1.0-beta.1.apk",
+            "https://example.com/twidget-v1.1.0-beta.1.apk",
+            true,
+        )
+
+        val update = AppUpdateManager.newestEligibleUpdate(
+            installedVersion = "1.1.0-debug.30",
+            releases = listOf(beta),
+            channel = UpdateChannel.BETA,
+        )
+
+        assertEquals(beta, update)
+    }
+
+    @Test
+    fun debugBuildDoesNotOfferOlderPublishedVersion() {
+        val older = AppRelease(
+            AppVersion.parse("1.0.0")!!,
+            "twidget-v1.0.0.apk",
+            "https://example.com/twidget-v1.0.0.apk",
+            false,
+        )
+
+        val update = AppUpdateManager.newestEligibleUpdate(
+            installedVersion = "1.1.0-debug.30",
+            releases = listOf(older),
+            channel = UpdateChannel.BETA,
+        )
+
+        assertEquals(null, update)
+    }
+
+    @Test
+    fun buildTypeSelectsMatchingDefaultUpdateChannel() {
+        assertEquals(UpdateChannel.DEBUG, AppUpdateManager.defaultUpdateChannel("1.1.0-debug.30"))
+        assertEquals(UpdateChannel.BETA, AppUpdateManager.defaultUpdateChannel("1.1.0-beta.1"))
+        assertEquals(UpdateChannel.STABLE, AppUpdateManager.defaultUpdateChannel("1.1.0"))
     }
 }
