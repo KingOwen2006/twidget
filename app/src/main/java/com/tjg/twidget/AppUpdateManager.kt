@@ -87,7 +87,6 @@ object AppUpdateManager {
     }
 
     fun checkReleases(installedVersion: String, channel: UpdateChannel): AppReleaseCheck {
-        val current = AppVersion.parse(installedVersion)
         val connection = request(RELEASES_URL)
         val releases = try {
             if (connection.responseCode !in 200..299) {
@@ -98,11 +97,7 @@ object AppUpdateManager {
             connection.disconnect()
         }
 
-        val update = current?.let {
-            eligibleReleases(parseReleases(releases), channel)
-                .filter { release -> release.version > current }
-                .maxByOrNull(AppRelease::version)
-        }
+        val update = newestEligibleUpdate(installedVersion, parseReleases(releases), channel)
         return AppReleaseCheck(update, parseReleaseNotices(releases))
     }
 
@@ -141,6 +136,17 @@ object AppUpdateManager {
         releases: List<AppRelease>,
         channel: UpdateChannel,
     ): List<AppRelease> = releases.filter { channel == UpdateChannel.BETA || !it.prerelease }
+
+    internal fun newestEligibleUpdate(
+        installedVersion: String,
+        releases: List<AppRelease>,
+        channel: UpdateChannel,
+    ): AppRelease? {
+        val current = AppVersion.parse(installedVersion) ?: return null
+        return eligibleReleases(releases, channel)
+            .filter { release -> release.version > current }
+            .maxByOrNull(AppRelease::version)
+    }
 
     private fun parseReleases(releases: JSONArray): List<AppRelease> {
         return buildList {

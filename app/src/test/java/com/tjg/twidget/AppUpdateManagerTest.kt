@@ -35,4 +35,58 @@ class AppUpdateManagerTest {
 
         assertEquals(listOf("1.0.1"), versions)
     }
+
+    @Test
+    fun betaChannelOffersNew110BetaToPreviousPublicBeta() {
+        val expected = AppRelease(
+            AppVersion.parse("1.1.0-beta.1")!!,
+            "twidget-v1.1.0-beta.1.apk",
+            "https://example.com/twidget-v1.1.0-beta.1.apk",
+            true,
+        )
+
+        val update = AppUpdateManager.newestEligibleUpdate(
+            installedVersion = "1.0.0-beta.1",
+            releases = listOf(expected),
+            channel = UpdateChannel.BETA,
+        )
+
+        assertEquals(expected, update)
+    }
+
+    @Test
+    fun currentBetaDoesNotOfferItselfAgain() {
+        val current = AppRelease(
+            AppVersion.parse("1.1.0-beta.1")!!,
+            "twidget-v1.1.0-beta.1.apk",
+            "https://example.com/twidget-v1.1.0-beta.1.apk",
+            true,
+        )
+
+        val update = AppUpdateManager.newestEligibleUpdate(
+            installedVersion = "1.1.0-beta.1",
+            releases = listOf(current),
+            channel = UpdateChannel.BETA,
+        )
+
+        assertEquals(null, update)
+    }
+
+    @Test
+    fun stableChannelDoesNotOfferBetaOnlyRelease() {
+        val beta = AppRelease(
+            AppVersion.parse("1.1.0-beta.1")!!,
+            "twidget-v1.1.0-beta.1.apk",
+            "https://example.com/twidget-v1.1.0-beta.1.apk",
+            true,
+        )
+
+        val update = AppUpdateManager.newestEligibleUpdate(
+            installedVersion = "1.0.0",
+            releases = listOf(beta),
+            channel = UpdateChannel.STABLE,
+        )
+
+        assertEquals(null, update)
+    }
 }
