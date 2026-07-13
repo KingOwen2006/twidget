@@ -57,6 +57,9 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private var calendarMonth = YearMonth.now()
     private var selectedCalendarDate: LocalDate? = null
     private var busy = false
+    private val keepQueueSwitcherInContent: (Float) -> Unit = {
+        if (::queueSwitcher.isInitialized) queueSwitcher.translationY = 0f
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,6 +185,9 @@ class ScheduleActivity : FoldablePopOverActivity() {
             setButtonIcon(0, ContextCompat.getDrawable(context, OneUiIconR.drawable.ic_oui_list))
             setButtonIcon(1, ContextCompat.getDrawable(context, OneUiIconR.drawable.ic_oui_calendar))
             post {
+                this@ScheduleActivity.findViewById<ToolbarLayout>(R.id.schedule_root)
+                    .addOnBottomOffsetChangedListener(keepQueueSwitcherInContent)
+                translationY = 0f
                 if (selectedQueueView == ScheduleQueueView.CALENDAR) setSelectedButton(1)
                 updateQueueSwitcherBackingLabels()
                 setOnButtonSelectedListener { index ->

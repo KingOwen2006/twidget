@@ -137,5 +137,5 @@
         app:backgroundTint="@color/notice_detail_back_surface"
         app:fabCustomSize="56dp"
         app:srcCompat="@drawable/ic_oui_back"
-        app:tint="@android:color/white" />
+        app:tint="@color/notice_detail_back_icon" />
 </FrameLayout>
