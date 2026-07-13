@@ -118,6 +118,15 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
         screen.addPreference(Preference(context).apply {
+            key = "post_scheduling"
+            title = getString(R.string.post_scheduling)
+            summary = getString(R.string.post_scheduling_summary)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, SettingsScheduleActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
             key = "advanced_options"
             title = getString(R.string.advanced_options)
             setOnPreferenceClickListener {

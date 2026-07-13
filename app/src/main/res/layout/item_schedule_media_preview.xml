@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="96dp"
+    android:layout_height="96dp"
+    android:layout_marginEnd="10dp">
+
+    <ImageView
+        android:id="@+id/schedule_media_preview_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/oneui_divider"
+        android:contentDescription="@string/schedule_local_media"
+        android:scaleType="centerCrop" />
+
+    <ImageButton
+        android:id="@+id/schedule_media_preview_remove"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="4dp"
+        android:background="@drawable/schedule_media_remove_bg"
+        android:contentDescription="@string/schedule_remove_item"
+        android:padding="5dp"
+        android:src="@drawable/ic_schedule_close"
+        app:tint="@android:color/white" />
+
+    <ImageButton
+        android:id="@+id/schedule_media_preview_download"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="4dp"
+        android:background="@drawable/schedule_media_remove_bg"
+        android:contentDescription="@string/schedule_download_media"
+        android:padding="5dp"
+        android:src="@drawable/ic_schedule_download"
+        app:tint="@android:color/white" />
+</FrameLayout>

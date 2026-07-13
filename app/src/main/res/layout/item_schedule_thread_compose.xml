@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="8dp">
+
+    <View
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="19dp"
+        android:layout_marginEnd="12dp"
+        android:background="@color/schedule_compose_divider" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/schedule_thread_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:gravity="top|start"
+            android:hint="@string/schedule_post_hint"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="280"
+            android:minLines="2"
+            android:textColor="@color/oneui_text_primary"
+            android:textColorHint="@color/oneui_text_secondary"
+            android:textSize="18sp" />
+
+        <HorizontalScrollView
+            android:id="@+id/schedule_thread_media_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/schedule_thread_media_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+    </LinearLayout>
+</LinearLayout>

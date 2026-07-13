@@ -7,9 +7,12 @@ describing any different practices.
 ## Data stored on the Android device
 
 Twidget stores configured X/Twitter usernames, app and widget preferences,
-fetched profile statistics, post analytics, and local history on the device.
-Optional official X API credentials, self-hosted bridge tokens, and cached
-bearer tokens are protected using Android Keystore-backed encryption.
+fetched profile statistics, post analytics, local history, and locally created
+scheduled-post drafts on the device. Drafts may include persisted references to
+media selected through Android's system picker. Optional official X API
+credentials, self-hosted bridge tokens, cached bearer tokens, and a
+user-supplied Postpone API key are protected using Android Keystore-backed
+encryption.
 
 Android cloud backup is disabled for the app. Removing an account from Twidget
 removes its app-managed local profile and history. Uninstalling the app removes
@@ -26,6 +29,10 @@ The selected data source determines where requests go:
 - **Self-hosted bridge:** the app contacts the URL configured by the user.
 - **Official X API:** the app contacts X directly using credentials supplied by
   the user.
+- **Postpone scheduling:** when the user explicitly selects Postpone for a
+  scheduled post, the app sends its text, publishing time, selected connected
+  account, and public or Content Library media references to Postpone. Local
+  reminder drafts are not sent to Postpone.
 - **Updates:** the About screen checks this repository's GitHub Releases API;
   update downloads come from the matching GitHub release asset.
 - **Images and links:** profile images may be fetched from URLs returned by a

@@ -18,7 +18,7 @@
             android:paddingStart="10dp"
             android:paddingTop="2dp"
             android:paddingEnd="10dp"
-            android:paddingBottom="48dp">
+            android:paddingBottom="96dp">
 
                 <TextView
                     android:id="@+id/history_notice"

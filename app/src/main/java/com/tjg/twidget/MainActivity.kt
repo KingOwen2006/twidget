@@ -110,6 +110,7 @@ class MainActivity : EdgeToEdgeActivity() {
         TwidgetStore.migrateStoredHistories(this)
         setupRefresh()
         setupDrawerChrome()
+        setupScheduleAction()
         render()
         if (TwidgetStore.settings(this).refreshOnLaunch) {
             sync()
@@ -1062,6 +1063,7 @@ class MainActivity : EdgeToEdgeActivity() {
         if (editMode == enabled) return
         editMode = enabled
         exitEditModeOnBack.isEnabled = enabled
+        findViewById<View>(R.id.schedule_fab)?.visibility = if (enabled) View.GONE else View.VISIBLE
         if (!enabled) clearDragPreview()
         invalidateOptionsMenu()
         render()
@@ -1357,6 +1359,15 @@ class MainActivity : EdgeToEdgeActivity() {
         findViewById<SwipeRefreshLayout>(R.id.main_refresh).apply {
             OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { handlePullRefresh() }
+        }
+    }
+
+    private fun setupScheduleAction() {
+        findViewById<View>(R.id.schedule_fab).setOnClickListener {
+            startLeftSidePopOverActivity(
+                Intent(this, ScheduleActivity::class.java)
+                    .putExtra(ScheduleActivity.EXTRA_USERNAME, selectedAccount)
+            )
         }
     }
 

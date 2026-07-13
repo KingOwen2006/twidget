@@ -18,17 +18,44 @@
         android:layout_height="match_parent"
         app:layout_location="drawer_panel" />
 
-    <!-- Main content: the selected account's dashboard -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/main_refresh"
+    <!-- Main content: the selected account's dashboard and scheduling action -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_location="main_content">
 
-        <FrameLayout
-            android:id="@+id/main_content_host"
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/main_refresh"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+            android:layout_height="match_parent">
+
+            <FrameLayout
+                android:id="@+id/main_content_host"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <TextView
+            android:id="@+id/schedule_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="52dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/import_primary_button_bg"
+            android:clickable="true"
+            android:contentDescription="@string/schedule_new"
+            android:elevation="6dp"
+            android:focusable="true"
+            android:fontFamily="sec"
+            android:gravity="center"
+            android:minWidth="132dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/schedule_title"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </FrameLayout>
 
 </dev.oneuiproject.oneui.layout.NavDrawerLayout>
