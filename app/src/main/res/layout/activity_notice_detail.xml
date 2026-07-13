@@ -125,17 +125,28 @@
         </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
     </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
 
-    <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+    <FrameLayout
         android:id="@+id/notice_detail_back"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_gravity="top|start"
         android:layout_marginStart="18dp"
         android:layout_marginTop="18dp"
+        android:background="@drawable/notice_detail_back_surface"
+        android:clickable="true"
+        android:clipToOutline="true"
         android:contentDescription="@string/notices_back"
         android:elevation="8dp"
-        app:backgroundTint="@color/notice_detail_back_surface"
-        app:fabCustomSize="56dp"
-        app:srcCompat="@drawable/ic_oui_back"
-        app:tint="@color/notice_detail_back_icon" />
+        android:focusable="true"
+        android:foreground="@null">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@null"
+            android:foreground="@null"
+            android:padding="16dp"
+            app:srcCompat="@drawable/ic_oui_back"
+            app:tint="@color/notice_detail_back_icon" />
+    </FrameLayout>
 </FrameLayout>
